@@ -9,8 +9,8 @@ end
 _G.UILOADED = true
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
-local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+local SaveManager = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local HttpService = game:GetService("HttpService")
@@ -45,11 +45,12 @@ local Tabs = {
     Infos = Window:AddTab({ Title = "Infos", Icon = "info" }),
     Setup = Window:AddTab({ Title = "Setup", Icon = "banana" }),
     Main = Window:AddTab({ Title = "Main", Icon = "loader" }),
+    Easter = Window:AddTab({ Title = "Easter", Icon = "egg" }),
     Raid = Window:AddTab({ Title = "Raid", Icon = "swords" }),
     Dungeon = Window:AddTab({ Title = "Dungeon", Icon = "sword" }),
     Portal = Window:AddTab({ Title = "Portal", Icon = "target" }),
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "map-pin" }),
-    Roll = Window:AddTab({ Title = "Roll", Icon = "egg" }),
+    Roll = Window:AddTab({ Title = "Roll", Icon = "user" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" }),
 }
 
@@ -199,6 +200,8 @@ _G.getMode = function()
         return "Dungeon"
     elseif modeAtt == "Portal" then
         return "Portal"
+    elseif modeAtt == "EasterInvasion" then
+        return "EasterInvasion"
     else
         return "None"
     end
@@ -264,21 +267,54 @@ _G.TeleportPetsToEnemy = function(enemyPart)
     if not rootPart then return end
     if (enemyPart.Position - rootPart.Position).Magnitude < 5 then return end
 
+    if not _G.CachedPetUUIDs then
+        _G.UpdatePetCache()
+    end
+
+    if (rootPart.Position - enemyPart.Position).Magnitude > 20 then return end
+
+    for _, petId in ipairs(_G.CachedPetUUIDs or {}) do
+        local args = {
+            [1] = {
+                [1] = {
+                    [1] = "PetSystem",
+                    [2] = "Equip",
+                    [3] = petId,
+                    [4] = true,
+                    ["n"] = 4
+                },
+                [2] = "\2"
+            }
+        }
+        pcall(dataRemoteEvent.FireServer, dataRemoteEvent, unpack(args))
+        task.wait(0.01)
+    end
+
+    task.wait(0.05)
+
+    local args = {
+        [1] = {
+            [1] = {
+                [1] = "PetSystem",
+                [2] = "EquipBest",
+                ["n"] = 2
+            },
+            [2] = "\2"
+        }
+    }
+    pcall(dataRemoteEvent.FireServer, dataRemoteEvent, unpack(args))
+end
+
+_G.UpdatePetCache = function()
+    _G.CachedPetUUIDs = {}
+    
     local playerPetsFolder = workspace._PETS:FindFirstChild(player.UserId)
     if not playerPetsFolder then return end
 
     for _, petFolder in pairs(playerPetsFolder:GetChildren()) do
-        for _, petModel in pairs(petFolder:GetChildren()) do
-            if petModel:IsA("Model") then
-                local petRoot = petModel:FindFirstChild("HumanoidRootPart")
-                if petRoot and (petRoot.Position - enemyPart.Position).Magnitude > 10 then
-                    local offsetX = math.random(-2, 2)
-                    local offsetZ = math.random(-2, 2)
-                    pcall(function()
-                        petRoot.CFrame = CFrame.new(enemyPart.Position + Vector3.new(offsetX, 0, offsetZ))
-                    end)
-                end
-            end
+        local petUUID = petFolder.Name
+        if petUUID then
+            table.insert(_G.CachedPetUUIDs, petUUID)
         end
     end
 end
@@ -298,7 +334,7 @@ _G.AutoFarmLoop = function()
         if not rootPart then task.wait(1); continue end
 
         local inMode = _G.getMode()
-        if inMode == "Raid" or inMode == "Dungeon" or inMode == "Portal" then
+        if inMode == "Raid" or inMode == "Dungeon" or inMode == "Portal" or inMode == "EasterInvasion" then
             task.wait(2);
             continue
         end
@@ -787,6 +823,252 @@ local function createWaveList()
         table.insert(waves, tostring(i))
     end
     return waves
+end
+
+
+_G.GetCurrentEasterStage = function()
+    local waveNumber = 0
+    local success, result = pcall(function()
+        local playerGui = player:FindFirstChild("PlayerGui")
+        local modeGui = playerGui and playerGui:FindFirstChild("Mode")
+        local content = modeGui and modeGui:FindFirstChild("Content")
+        local easterUi = content and content:FindFirstChild("EasterInvasion")
+        local startUi = easterUi and easterUi:FindFirstChild("Start")
+        local label = startUi and startUi:FindFirstChild("Label")
+
+        if label and label:IsA("TextLabel") then
+            local text = label.Text
+            local numStr = string.match(text, "Wave:%s*(%d+)")
+            if numStr then
+                waveNumber = tonumber(numStr) or 0
+            end
+        end
+    end)
+
+    if not success then
+        return 0
+    end
+
+    return waveNumber
+end
+
+_G.FindNearestEasterEnemy = function(playerRoot)
+    local nearestEnemy = nil
+    local shortestDistance = math.huge
+    local playerId = tostring(player.UserId)
+    local serverEnemiesFolder = Workspace._ENEMIES.Server
+
+    if not serverEnemiesFolder then return nil, math.huge end
+
+    local easterFolder = serverEnemiesFolder:FindFirstChild("EasterInvasion")
+    if not easterFolder then return nil, math.huge end
+    
+    local playerEasterFolder = easterFolder:FindFirstChild(playerId)
+    if not playerEasterFolder then return nil, math.huge end
+    
+    for _, enemy in pairs(playerEasterFolder:GetChildren()) do
+        if enemy:IsA("BasePart") and not (enemy:GetAttribute("Dead") or (enemy:GetAttribute("HP") or 0) <= 0) then
+            local distance = (playerRoot.Position - enemy.Position).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                nearestEnemy = enemy
+            end
+        end
+    end
+
+    return nearestEnemy, shortestDistance
+end
+
+_G.CreateAndStartEaster = function()
+    if _G.getMode() == "EasterInvasion" then return false end
+
+    local createArgs = {
+        [1] = {
+            [1] = {
+                [1] = "EasterInvasionSystem",
+                [2] = "Create",
+                ["n"] = 2
+            },
+            [2] = "\2"
+        }
+    }
+    pcall(dataRemoteEvent.FireServer, dataRemoteEvent, unpack(createArgs))
+    task.wait(1.5)
+
+    if Options.PrivateEaster and Options.PrivateEaster.Value then
+        local privateArgs = {
+            [1] = {
+                [1] = {
+                    [1] = "EasterInvasionSystem",
+                    [2] = "MakePrivate",
+                    ["n"] = 2
+                },
+                [2] = "\2"
+            }
+        }
+        pcall(dataRemoteEvent.FireServer, dataRemoteEvent, unpack(privateArgs))
+        task.wait(1)
+    end
+
+    local startArgs = {
+        [1] = {
+            [1] = {
+                [1] = "EasterInvasionSystem",
+                [2] = "Start",
+                ["n"] = 2
+            },
+            [2] = "\2"
+        }
+    }
+    pcall(dataRemoteEvent.FireServer, dataRemoteEvent, unpack(startArgs))
+    task.wait(6)
+
+    return _G.getMode() == "EasterInvasion"
+end
+
+_G.AutoEasterLoop = function()
+    local wasInEaster = false
+    local enemiesFolder = Workspace:FindFirstChild("_ENEMIES")
+
+    while Options.AutoEasterToggle.Value do
+        local rootPart = _G.GetPlayerRoot()
+        if not rootPart then
+            task.wait(1); continue
+        end
+
+        local currentMode = _G.getMode()
+
+        if wasInEaster and currentMode ~= "EasterInvasion" then
+            if _G.SavedWorld and _G.SavedWorldPosition then
+                local args = {
+                    [1] = {
+                        [1] = {
+                            [1] = "TeleportSystem",
+                            [2] = "To",
+                            [3] = _G.SavedWorld,
+                            ["n"] = 3
+                        },
+                        [2] = "\2"
+                    }
+                }
+                pcall(dataRemoteEvent.FireServer, dataRemoteEvent, unpack(args))
+                task.wait(2)
+                rootPart = _G.GetPlayerRoot()
+                if rootPart then pcall(function() rootPart.CFrame = _G.SavedWorldPosition end) end
+            end
+            task.wait(5)
+            wasInEaster = false
+            if not _G.CreateAndStartEaster() then task.wait(10) end
+            continue
+        end
+
+        if currentMode ~= "EasterInvasion" then
+             if not _G.CreateAndStartEaster() then task.wait(10) end
+             task.wait(5)
+             continue
+        end
+
+        wasInEaster = true
+        local playerId = tostring(player.UserId)
+        local currentPosition = rootPart.Position
+
+        local easterFolder = enemiesFolder and enemiesFolder.Server and enemiesFolder.Server.EasterInvasion
+        local playerEasterFolder = easterFolder and easterFolder:FindFirstChild(playerId)
+
+        if not playerEasterFolder then
+             task.wait(1.5)
+             continue
+        elseif #playerEasterFolder:GetChildren() == 0 then
+             task.wait(1.5)
+             continue
+        end
+
+        local nearestEnemy, shortestDistance = _G.FindNearestEasterEnemy(rootPart)
+
+        if nearestEnemy then
+             if nearestEnemy.Parent and not (nearestEnemy:GetAttribute("Dead") or nearestEnemy:GetAttribute("HP") <= 0) then
+                local enemyUuid = nearestEnemy.Name
+                local needsToMove = shortestDistance > 8
+                local moveSuccess = true
+                local farmMode = Options.FarmModeDropdown.Value or "Teleport"
+
+                if needsToMove then
+                    pcall(function() rootPart.CFrame = CFrame.new(nearestEnemy.Position + Vector3.new(0, 3, 5)) end)
+                    task.wait(0.15)
+                    if (rootPart.Position - nearestEnemy.Position).Magnitude > 20 then moveSuccess = false end
+                end
+
+                local petTargeting = false
+                local playerPetsFolder = workspace._PETS:FindFirstChild(player.UserId)
+                if playerPetsFolder then
+                    for _, petFolder in pairs(playerPetsFolder:GetChildren()) do
+                        if petFolder:GetAttribute("Target") == enemyUuid then
+                            petTargeting = true
+                            break
+                        end
+                    end
+                end
+
+                if moveSuccess and not petTargeting then
+                    if Options.AutoTeleportPets.Value then
+                        _G.TeleportPetsToEnemy(nearestEnemy)
+                        task.wait(0.05)
+                    end
+                    local args = {
+                        [1] = {
+                            [1] = {
+                                [1] = "PetSystem",
+                                [2] = "Attack",
+                                [3] = enemyUuid,
+                                [4] = true,
+                                ["n"] = 4
+                            },
+                            [2] = "\2"
+                        }
+                    }
+                    pcall(dataRemoteEvent.FireServer, dataRemoteEvent, unpack(args))
+                end
+            else
+                 task.wait(0.1)
+            end
+        else
+            task.wait(0.5)
+        end
+
+        local leaveOnWaveStr = Options.LeaveOnEasterWaveDropdown.Value
+        if leaveOnWaveStr ~= "None" then
+            local targetWave = tonumber(leaveOnWaveStr)
+            if targetWave then
+                local currentWave = _G.GetCurrentEasterStage()
+
+                if currentWave >= targetWave then
+                    if _G.SavedWorld and _G.SavedWorldPosition then
+                        local args = {
+                            [1] = {
+                                [1] = {
+                                    [1] = "TeleportSystem",
+                                    [2] = "To",
+                                    [3] = _G.SavedWorld,
+                                    ["n"] = 3
+                                },
+                                [2] = "\2"
+                            }
+                        }
+                        pcall(dataRemoteEvent.FireServer, dataRemoteEvent, unpack(args))
+                        task.wait(3)
+                        rootPart = _G.GetPlayerRoot()
+                        if rootPart then pcall(function() rootPart.CFrame = _G.SavedWorldPosition end) end
+                    end
+
+                    wasInEaster = false
+                    if not _G.CreateAndStartEaster() then task.wait(10) end
+                    continue
+                end
+            end
+        end
+
+        task.wait(Options.AutoFarmDelaySlider.Value)
+    end
 end
 
 _G.GetCurrentDungeonStage = function()
@@ -1294,6 +1576,20 @@ do
         Default = false
     })
 
+    Tabs.Setup:AddButton({
+        Title = "Update Pet Cache",
+        Description = "Update the list of pets for teleport feature",
+        Callback = function()
+            _G.UpdatePetCache()
+            local count = _G.CachedPetUUIDs and #_G.CachedPetUUIDs or 0
+            Fluent:Notify({
+                Title = "Pet Cache Updated",
+                Content = string.format("Found %d pets in your inventory", count),
+                Duration = 3
+            })
+        end
+    })
+
     Tabs.Setup:AddSection("World Position")
     local SavePositionButton = Tabs.Setup:AddButton({
         Title = "Save Current Position",
@@ -1455,6 +1751,33 @@ do
             end
         })
     end
+    Tabs.Teleport:AddSection("Teleport")
+    Tabs.Teleport:AddButton({
+        Title = "Teleport to Saved Position",
+        Callback = function()
+            local rootPart = _G.GetPlayerRoot()
+            -- verifique se já esta no mundo salvo, se estiver, apenas use o teleporte normal, do cframe salvo
+            if _G.SavedWorld == _G.currentWorldNumber() then
+                if rootPart then pcall(function() rootPart.CFrame = _G.SavedWorldPosition end) end
+            else
+                local args = {
+                    [1] = {
+                        [1] = {
+                            [1] = "TeleportSystem",
+                            [2] = "To",
+                            [3] = _G.SavedWorld,
+                            ["n"] = 3
+                        },
+                        [2] = "\2"
+                    }
+                }
+                pcall(dataRemoteEvent.FireServer, dataRemoteEvent, unpack(args))
+                task.wait(2)
+                rootPart = _G.GetPlayerRoot()
+                if rootPart then pcall(function() rootPart.CFrame = _G.SavedWorldPosition end) end
+            end
+        end
+    })
     Tabs.Teleport:AddSection("Server")
     Tabs.Teleport:AddButton({
         Title = "Server Hop",
@@ -1484,7 +1807,7 @@ do
 
     Tabs.Infos:AddSection("Support")
     Tabs.Infos:AddParagraph({
-        Title = "Version 1.0",
+        Title = "Version 2.0",
         Content = ""
     })
     Tabs.Infos:AddParagraph({
@@ -1506,6 +1829,38 @@ do
         Multi = false,
         Default = "Raid First"
     })
+
+    Tabs.Easter:AddSection("Easter Invasion Options")
+
+    Tabs.Easter:AddDropdown("LeaveOnEasterWaveDropdown", {
+        Title = "Leave on Wave",
+        Values = createWaveList(),
+        Multi = false,
+        Default = "None"
+    })
+
+    Tabs.Easter:AddToggle("PrivateEaster", {
+        Title = "Make Easter Invasion Private",
+        Default = true
+    })
+
+    local AutoEasterToggle = Tabs.Easter:AddToggle("AutoEasterToggle", {
+        Title = "Auto Easter Invasion",
+        Default = false
+    })
+
+    Tabs.Easter:AddButton({
+        Title = "Start Easter Invasion",
+        Callback = function()
+            _G.CreateAndStartEaster()
+        end
+    })
+
+    AutoEasterToggle:OnChanged(function()
+        if Options.AutoEasterToggle.Value then
+            task.spawn(_G.AutoEasterLoop)
+        end
+    end)
 
 end
 
@@ -1655,3 +2010,13 @@ end
 createMinimizeFrame()
 player.CharacterAdded:Connect(createMinimizeFrame)
 task.spawn(_G.AutoClickResultsReturn)
+
+task.spawn(function()
+    task.wait(2)
+    _G.UpdatePetCache()
+    
+    player.CharacterAdded:Connect(function()
+        task.wait(1)
+        _G.UpdatePetCache()
+    end)
+end)
