@@ -71,7 +71,8 @@ local worldList = {
     "Cursed School",
     "Leveling Town",
     "Sand Empire",
-    "Bizarre Desert"
+    "Bizarre Desert",
+    "Z Hills"
 }
 
 local starList = {
@@ -81,7 +82,8 @@ local starList = {
     "Cursed Star",
     "Player Star",
     "Pirate Star",
-    "Bizarre Star"
+    "Bizarre Star",
+    "Z Star"
 }
 
 local worldMap = {
@@ -91,7 +93,8 @@ local worldMap = {
     [4] = "Cursed School",
     [5] = "Leveling Town",
     [6] = "Sand Empire",
-    [7] = "Bizarre Desert"
+    [7] = "Bizarre Desert",
+    [8] = "Z Hills"
 }
 
 local enemyList = {
@@ -149,7 +152,15 @@ local enemyList = {
         { Id = "Pucci", Name = "Whitesnake"},
         { Id = "Kars", Name = "1st Pillar Man"},
         { Id = "DioBrando", Name = "Vampire"},
-        { Id = "DioOverHeaven", Name = "Vampire (Over Heaven)" }
+        { Id = "DioOverHeaven", Name = "Vampire (Over Heaven) [SECRET]" }
+    },
+    ["Z Hills"] = {
+        { Id = "Nappa", Name = "Bald Warrior"},
+        { Id = "Raditz", Name = "Hairy Warrior" },
+        { Id = "Frieza", Name = "Purple Alien" },
+        { Id = "Cell", Name = "Cockroach Android" },
+        { Id = "Kidboo", Name = "Kid Slime" },
+        { Id = "GokuSSJ", Name = "Super Warrior [SECRET]" },        
     }
 }
 
@@ -267,12 +278,15 @@ _G.TeleportPetsToEnemy = function(enemyPart)
     if not rootPart then return end
     if (enemyPart.Position - rootPart.Position).Magnitude < 5 then return end
 
+    -- Cache dos pets do jogador se ainda não existir
     if not _G.CachedPetUUIDs then
         _G.UpdatePetCache()
     end
 
+    -- Se estamos longe do inimigo, não faça nada
     if (rootPart.Position - enemyPart.Position).Magnitude > 20 then return end
 
+    -- Primeiro desequipar todos os pets
     for _, petId in ipairs(_G.CachedPetUUIDs or {}) do
         local args = {
             [1] = {
@@ -287,11 +301,13 @@ _G.TeleportPetsToEnemy = function(enemyPart)
             }
         }
         pcall(dataRemoteEvent.FireServer, dataRemoteEvent, unpack(args))
-        task.wait(0.01)
+        task.wait(0.01) -- Pequeno delay para não sobrecarregar
     end
 
+    -- Pequeno delay para garantir que todos foram desequipados
     task.wait(0.05)
 
+    -- Agora equipar os melhores pets
     local args = {
         [1] = {
             [1] = {
@@ -305,12 +321,15 @@ _G.TeleportPetsToEnemy = function(enemyPart)
     pcall(dataRemoteEvent.FireServer, dataRemoteEvent, unpack(args))
 end
 
+-- Função para atualizar o cache de pets
 _G.UpdatePetCache = function()
     _G.CachedPetUUIDs = {}
     
+    -- Obter pasta de pets do jogador
     local playerPetsFolder = workspace._PETS:FindFirstChild(player.UserId)
     if not playerPetsFolder then return end
 
+    -- Coletar todos os IDs dos pets
     for _, petFolder in pairs(playerPetsFolder:GetChildren()) do
         local petUUID = petFolder.Name
         if petUUID then
@@ -972,6 +991,7 @@ _G.AutoEasterLoop = function()
         local playerId = tostring(player.UserId)
         local currentPosition = rootPart.Position
 
+        -- Verifica se a pasta de inimigos do Easter existe
         local easterFolder = enemiesFolder and enemiesFolder.Server and enemiesFolder.Server.EasterInvasion
         local playerEasterFolder = easterFolder and easterFolder:FindFirstChild(playerId)
 
@@ -1035,6 +1055,7 @@ _G.AutoEasterLoop = function()
             task.wait(0.5)
         end
 
+        -- Verifica se deve sair com base na onda atual
         local leaveOnWaveStr = Options.LeaveOnEasterWaveDropdown.Value
         if leaveOnWaveStr ~= "None" then
             local targetWave = tonumber(leaveOnWaveStr)
@@ -1233,7 +1254,7 @@ _G.AutoClickResultsReturn = function()
             if not resultsScreenVisible then
                 resultsScreenVisible = true
 
-                local clickSuccess = pcall(function()
+                pcall(function()
                     local previousSelection = GuiService.SelectedObject
                     GuiService.SelectedObject = returnButton
                     task.wait(0.1)
@@ -1807,7 +1828,7 @@ do
 
     Tabs.Infos:AddSection("Support")
     Tabs.Infos:AddParagraph({
-        Title = "Version 2.0",
+        Title = "Version 2.1",
         Content = ""
     })
     Tabs.Infos:AddParagraph({
@@ -2011,10 +2032,12 @@ createMinimizeFrame()
 player.CharacterAdded:Connect(createMinimizeFrame)
 task.spawn(_G.AutoClickResultsReturn)
 
+-- Inicializar o cache de pets quando o script carrega
 task.spawn(function()
-    task.wait(2)
+    task.wait(2) -- Pequeno delay para garantir que o jogo está totalmente carregado
     _G.UpdatePetCache()
     
+    -- Atualizar o cache quando o personagem do jogador for carregado
     player.CharacterAdded:Connect(function()
         task.wait(1)
         _G.UpdatePetCache()
