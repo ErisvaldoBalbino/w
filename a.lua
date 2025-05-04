@@ -4,7 +4,7 @@ local lEncode, lDecode, lDigest = a3, aw, Z;
 --! configuration
 local service = 3431;
 local pasta = "951a1259-8c76-43c9-979f-875c1f41f202";
-local useNonce = true; 
+local useNonce = true;
 
 --! File Saving Configuration
 local keyFileName = "platoboost_saved_key.txt"
@@ -4465,16 +4465,13 @@ local function RunMainScript()
 								local firePortal = room1 and room1:FindFirstChild("FirePortal")
 								if firePortal and not teleportedToRoom25 then
 									local room25 = mainWorld:FindFirstChild("Room_25")
-									if not room25 or not room25:GetPivot() then
-										print("Room_25 not loaded, waiting...")
-										task.wait(1)
-										continue
+									if room25 then
+										pcall(function()
+											_G.MoveToEnemy(room25:GetPivot().Position, "Teleport", Options.CastleFarmTweenSpeedSlider.Value, false)
+										end)
+										task.wait()
+										teleportedToRoom25 = true
 									end
-									pcall(function()
-										_G.MoveToEnemy(room25:GetPivot().Position, "Teleport", Options.CastleFarmTweenSpeedSlider.Value, false)
-									end)
-									task.wait()
-									teleportedToRoom25 = true
 								end
 							end
 	
