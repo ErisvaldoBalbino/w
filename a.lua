@@ -3542,13 +3542,12 @@ local function RunMainScript()
 	
 										eventCycleCompletedThisWindow = true
 	
+										task.wait(1)
+	
 										if Options.WinterServerHop.Value then
 											Notify("Auto Winter", "Event cycle complete. Hopping server...", 5, "loading")
 											task.wait(1.5)
-											for i = 1, 5 do
-												_G.HopToServer()
-												task.wait(13)
-											end
+											_G.HopToServer()
 											Notify("Auto Winter", "Server hop initiated. Waiting...", SERVER_HOP_WAIT_TIME, "timer")
 											task.wait(SERVER_HOP_WAIT_TIME)
 											snowMonarchKilledThisWindow = false
@@ -3957,14 +3956,6 @@ local function RunMainScript()
 			end
 		})
 		task.wait()
-		Tabs.Dungeon:AddToggle("WaitDoubleDungeonToggle", {
-			Title = "Wait for Double Dungeon",
-			Default = false,
-			Callback = function(Value)
-				_G.AriseSettings.Toggles.LeaveFastToggle = Value
-			end
-		})
-		task.wait()
 		Tabs.Dungeon:AddToggle("AutoRejoinDungeonToggle", {
 			Title = "Auto Rejoin",
 			Default = false,
@@ -4008,156 +3999,156 @@ local function RunMainScript()
 			end
 		})
 		task.wait()
+		local function AreEnemiesAlive()
+			local serverFolder = Workspace:FindFirstChild("__Main") and Workspace.__Main:FindFirstChild("__Enemies") and Workspace.__Main.__Enemies:FindFirstChild("Server")
+			if not serverFolder then
+				return false
+			end
+		
+			local serverEnemies = serverFolder:GetChildren()
+			for _, enemySource in ipairs(serverEnemies) do
+				if enemySource:IsA("Folder") or enemySource:IsA("Model") then
+					for _, enemyInstance in ipairs(enemySource:GetChildren()) do
+						if enemyInstance:IsA("BasePart") then
+							if not enemyInstance:GetAttribute("Dead") then
+								return true
+							end
+						end
+					end
+				elseif enemySource:IsA("BasePart") then
+					 if not enemySource:GetAttribute("Dead") then
+						return true
+					end
+				end
+			end
+			return false
+		end
+		
 		Tabs.Dungeon:AddToggle("AutoFarmDungeonToggle", {
 			Title = "Auto Farm Dungeon",
 			Default = false,
 			Callback = function(Value)
 				_G.AriseSettings.Toggles.AutoFarmDungeon = Value
 				if Value then
-					if Options.AutoFarmTestDungeonToggle and Options.AutoFarmTestDungeonToggle.Value then
-						Options.AutoFarmTestDungeonToggle:SetValue(false)
-					end
-		
 					spawn(function()
-						while Options.AutoFarmDungeonToggle.Value do
+						local isPotentiallyEnding = false
+						local endCheckStartTime = 0
 		
+						while Options.AutoFarmDungeonToggle.Value do
 							if _G.IsInCastle() then
 								break
 							end
 		
-							if _G.IsInDungeon() then
-								if not getgenv().isInDungeonForTracking then
-									 _G.trackDungeonStartInventory()
-									 getgenv().dungeonCompletionSent = false
-									 getgenv().isInDungeonForTracking = true
-								end
-							else
-								break
+							if not _G.IsInDungeon() then
+								 break
 							end
 		
-							local isPotentiallyEnding = false
-							local dungeonInfoLabel = nil
-		
-							local successInfo, labelResult = pcall(function()
-								local hud = player.PlayerGui:FindFirstChild("Hud")
-								local upContainer = hud and hud:FindFirstChild("UpContanier")
-								return upContainer and upContainer:FindFirstChild("DungeonInfo") and upContainer:FindFirstChild("DungeonInfo").TextLabel
-							end)
-		
-							if successInfo and labelResult then
-								 dungeonInfoLabel = labelResult
-								 if string.find(string.lower(dungeonInfoLabel.Text), "dungeon ends in", 1, true) then
-									 isPotentiallyEnding = true
-								 end
+							local playerRoot = getPlayerRoot()
+							if not playerRoot then
+								 task.wait(0.5)
+								 continue
 							end
 		
+							local enemiesAlive = AreEnemiesAlive()
 		
-							if isPotentiallyEnding then
-								if Options.WaitDoubleDungeonToggle.Value then
-									local checkStartTime = tick()
-									local isDoubleDungeon = false
-									local WAIT_FOR_DOUBLE_DURATION = 2
-									local stopFarmingCompletely = false
+							if enemiesAlive then
+								isPotentiallyEnding = false
 		
-									while tick() - checkStartTime < WAIT_FOR_DOUBLE_DURATION and Options.AutoFarmDungeonToggle.Value do
-										if dungeonInfoLabel and dungeonInfoLabel.Parent then
-											 local currentText = dungeonInfoLabel.Text
+								local serverFolder = Workspace:FindFirstChild("__Main") and Workspace.__Main:FindFirstChild("__Enemies") and Workspace.__Main.__Enemies:FindFirstChild("Server")
+								if serverFolder then
+									local serverEnemies = serverFolder:GetChildren()
+									local nearestEnemyInstance = nil
+									local minDistance = math.huge
 		
-											 if string.find(currentText, "Double Dungeon Appear", 1, true) then
-												 isDoubleDungeon = true
-												 Fluent:Notify({ Title = "Double Dungeon", Content = "Continuing farm...", Duration = 3 })
-												 isPotentiallyEnding = false
-												 break
-											 end
-		
-		
-										else
-											_G.HandleDungeonEnd()
-											stopFarmingCompletely = true
-											break
-										end
-										task.wait() -- Brief pause before next check in inner loop
-									end -- End of inner while loop
-		
-		
-									if stopFarmingCompletely then
-										break
-									end
-		
-									if not isDoubleDungeon then
-										_G.HandleDungeonEnd()
-										break
-									end
-		
-								else
-									task.wait(2.5)
-									_G.HandleDungeonEnd()
-									break
-								end
-		
-							else
-								if playerRoot then
-									local serverFolder = workspace.__Main.__Enemies:FindFirstChild("Server")
-									if serverFolder then
-										local serverEnemies = serverFolder:GetChildren()
-										local nearestEnemy = nil
-										local minDistance = math.huge
-										for _, enemy in ipairs(serverEnemies) do
-											local isDead = enemy:GetAttribute("Dead") or false
-											local enemyPosition = enemy:IsA("BasePart") and enemy.Position or (enemy:FindFirstChildWhichIsA("BasePart") and enemy:FindFirstChildWhichIsA("BasePart").Position)
-											if not isDead and enemyPosition then
-												local distance = (playerRoot.Position - enemyPosition).Magnitude
+									for _, enemySource in ipairs(serverEnemies) do
+										if enemySource:IsA("Folder") or enemySource:IsA("Model") then
+											for _, enemyInstance in ipairs(enemySource:GetChildren()) do
+												if enemyInstance and enemyInstance:IsA("BasePart") then
+													local isDead = enemyInstance:GetAttribute("Dead") or false
+													if not isDead then
+														local distance = (playerRoot.Position - enemyInstance.Position).Magnitude
+														if distance < minDistance then
+															minDistance = distance
+															nearestEnemyInstance = enemyInstance
+														end
+													end
+												end
+											end
+										elseif enemySource:IsA("BasePart") then
+											local isDead = enemySource:GetAttribute("Dead") or false
+											if not isDead then
+												local distance = (playerRoot.Position - enemySource.Position).Magnitude
 												if distance < minDistance then
 													minDistance = distance
-													nearestEnemy = enemy
+													nearestEnemyInstance = enemySource
 												end
+											end
+										end
+									end
+		
+									if nearestEnemyInstance then
+										local nearestEnemyPosition = nearestEnemyInstance.Position
+										local needsToMove = minDistance > 5
+		
+										if needsToMove then
+											local moveMode = Options.DungeonMoveModeDropdown.Value                                 
+											if moveMode == "Fast" then                                        
+												 _G.MoveToEnemy(nearestEnemyPosition, "Teleport", Options.DungeonFarmTweenSpeedSlider.Value, false)                                        
+											else
+												_G.MoveToEnemy(nearestEnemyPosition, "Tween", Options.DungeonFarmTweenSpeedSlider.Value)
 											end
 										end
 	
-										if nearestEnemy then
-											local nearestEnemyPosition = nearestEnemy.Position
-		
-											local needsToMove = minDistance > 5
-											if needsToMove then
-												local moveMode = _G.AriseSettings.DungeonMoveMode
-												if moveMode == "Fast" then
-													_G.MoveToEnemy(nearestEnemy.Position, "Teleport", _G.AriseSettings.DungeonFarmTweenSpeed, false)
-												else
-													_G.MoveToEnemy(nearestEnemyPosition, "Tween", _G.AriseSettings.DungeonFarmTweenSpeed or 150)
-												end
-											end
-		
-											if hasFreePet() then
-												_G.AttackEnemy(nearestEnemy.Name)
-											end
+										if hasFreePet() then
+											 if _G.AttackEnemy then
+												 _G.AttackEnemy(nearestEnemyInstance.Name)
+											 end
 										end
-									else
-										task.wait(1)
 									end
 								else
-									task.wait(1)
+									 task.wait(0.5)
+								end
+							else
+								if not isPotentiallyEnding then
+									 isPotentiallyEnding = true
+									 endCheckStartTime = tick()
+								end
+		
+								if tick() - endCheckStartTime >= 3.5 then
+									 if not AreEnemiesAlive() then
+										 _G.HandleDungeonEnd()
+										 break
+									 else
+										 isPotentiallyEnding = false
+									 end
 								end
 							end
 		
-							task.wait(Options.DungeonFarmDelaySlider.Value)
-		
+							local delay = Options.DungeonFarmDelaySlider.Value
+							task.wait(delay)
 						end
 		
+						playerRoot = getPlayerRoot()
 						if playerRoot and playerRoot.Anchored then playerRoot.Anchored = false end
-						getgenv().isInDungeonForTracking = false
-		
 					end)
 				else
+					playerRoot = getPlayerRoot()
 					if playerRoot and playerRoot.Anchored then playerRoot.Anchored = false end
-					getgenv().isInDungeonForTracking = false
 				end
-			end
+			end,
 		})
+		
 		task.wait()
 	end
 	
 	do
 		Tabs.Castle:AddSection("Castle Options")
+		Tabs.Castle:AddDropdown("CastleCheckpointDropdown",{
+			Title = "Choose Checkpoint",
+			Values = {"None", "25", "50", "75", "100"},
+			Multi = false,
+			Default = "None"
+		})
 		task.wait()
 		local CheckpointToggle = Tabs.Castle:AddToggle("AutoCastleToggle", {
 			Title = "Auto Castle",
@@ -4191,18 +4182,34 @@ local function RunMainScript()
 								end
 		
 								if _G.ActivityPriority == "Castle" then
-									dataRemoteEvent:FireServer(unpack({
-										[1] = {
+									if Options.CastleCheckpointDropdown.Value ~= "None" then
+										dataRemoteEvent:FireServer(unpack({
 											[1] = {
+												[1] = {
 												["Check"] = true,
+												["Floor"] = Options.CastleCheckpointDropdown.Value,
 												["Event"] = "CastleAction",
 												["Action"] = "Join"
 											},
 											[2] = "\11"
-										}
-									}))
-									task.wait(5)
-									break
+											}
+										}))
+										task.wait(5)
+										break
+									else
+										dataRemoteEvent:FireServer(unpack({
+											[1] = {
+												[1] = {
+													["Check"] = false,
+													["Event"] = "CastleAction",
+													["Action"] = "Join"
+												},
+												[2] = "\11"
+											}
+										}))
+										task.wait(5)
+										break
+									end
 								end
 							else
 								if _G.SavedFarmPosition then
@@ -4265,117 +4272,6 @@ local function RunMainScript()
 				end
 			end
 		})
-		
-		task.wait()
-		
-		local NoCheckpointToggle = Tabs.Castle:AddToggle("AutoCastleNoCheckpointToggle", {
-			Title = "Auto Castle (No Checkpoint)",
-			Default = false,
-			Callback = function(value)
-				_G.AriseSettings.Toggles.AutoCastleNoCheckpoint = value
-		
-				-- Desativa o outro toggle se este for ativado
-				if value and _G.AriseSettings.Toggles.AutoCastle then
-					Options.AutoCastleToggle:SetValue(false)
-				end
-		
-				if value then
-					spawn(function()
-						while _G.AriseSettings.Toggles.AutoCastleNoCheckpoint do
-							if _G.IsInCastle() or _G.IsInDungeon() then
-								break
-							end
-		
-							if _G.ActivityPriority == "Dungeon" or _G.ActivityPriority == "WinterFarming" then
-								task.wait(5)
-								continue
-							end
-		
-							local currentTime = os.date("*t")
-							local minutes = currentTime.min
-							local isActiveWindow = minutes >= 45 and minutes < 60
-				
-							if isActiveWindow then
-								if _G.ActivityPriority == "Farming" or _G.ActivityPriority == "None" then
-									_G.ActivityPriority = "Castle"
-								end
-		
-								if _G.ActivityPriority == "Castle" then
-									dataRemoteEvent:FireServer(unpack({
-										[1] = {
-											[1] = {
-												["Check"] = false,
-												["Event"] = "CastleAction",
-												["Action"] = "Join"
-											},
-											[2] = "\11"
-										}
-									}))
-									task.wait(5)
-									break
-								end
-							else
-								-- Lógica de espera e teleporte para farming
-								if _G.SavedFarmPosition then
-									local currentCheckWorld = getCurrentWorld()
-									local targetWorld = _G.FindNearestWorld(_G.SavedFarmPosition)
-									local farmingActive = Options.AutoFarmToggle.Value
-		
-									if currentCheckWorld ~= targetWorld then
-										_G.TeleportTo(_G.SavedFarmPosition)
-										task.wait(0.5)
-										local currentRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-										if currentRoot then currentRoot.Anchored = false end
-										if farmingActive then
-											Options.AutoFarmToggle:SetValue(false)
-											task.wait(0.2)
-											Options.AutoFarmToggle:SetValue(true)
-										end
-									else
-										if farmingActive and (_G.ActivityPriority == "None" or _G.ActivityPriority == "Farming") then
-											Options.AutoFarmToggle:SetValue(false)
-											task.wait(0.2)
-											Options.AutoFarmToggle:SetValue(true)
-										end
-									end
-								end
-		
-								local waitSeconds = 0
-								local targetMinute = 45
-								local targetHour = currentTime.hour
-		
-								if minutes < 45 then
-									waitSeconds = (45 - minutes) * 60 - currentTime.sec
-								else
-									waitSeconds = (60 - minutes) * 60 - currentTime.sec + 45 * 60
-									targetHour = (targetHour + 1) % 24
-								end
-								local targetTimeString = string.format("%02d:%02d", targetHour, targetMinute)
-								Fluent:Notify({
-									Title = "Auto Castle Paused",
-									Content = "Waiting " .. math.ceil(waitSeconds) .. "s until " .. targetTimeString,
-									Duration = 5
-								})
-		
-								local waitEndTime = tick() + waitSeconds
-								while tick() < waitEndTime and _G.AriseSettings.Toggles.AutoCastleNoCheckpoint do
-									task.wait(1)
-								end
-							end
-							task.wait(0.1)
-						end
-					end)
-				else
-					if _G.ActivityPriority == "Castle" then
-						_G.ActivityPriority = "None"
-					end
-					local playerRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-					if playerRoot and playerRoot.Anchored then
-						playerRoot.Anchored = false
-					end
-				end
-			end
-		})
 		task.wait()
 		Tabs.Castle:AddToggle("AutoResetCastleToggle", {
 			Title = "Auto Reset Castle (Gems)",
@@ -4399,7 +4295,7 @@ local function RunMainScript()
 		task.wait()
 		Tabs.Castle:AddDropdown("ActionOnFloorDropdown", {
 			Title = "What to Do",
-			Values = {"Leave Castle", "Do Nothing"},
+			Values = {"Leave Castle", "Leave After Boss", "Do Nothing"},
 			Multi = false,
 			Default = "Do Nothing",
 		})
@@ -4439,6 +4335,14 @@ local function RunMainScript()
 			end
 		})
 		task.wait()
+		Tabs.Castle:AddToggle("FocusBossesToggle", {
+			Title = "Focus Bosses",
+			Default = false,
+			Callback = function(Value)
+				_G.AriseSettings.Toggles.FocusBosses = Value
+			end
+		})
+		task.wait()
 		local teleportedToRoom25 = false
 		Tabs.Castle:AddToggle("AutoFarmCastleToggle", {
 			Title = "Auto Farm Castle",
@@ -4452,13 +4356,18 @@ local function RunMainScript()
 							if not _G.IsInCastle() then
 								break
 							end
-	
+		
 							local playerRoot = getPlayerRoot()
 							if not playerRoot then
 								task.wait(0.5)
 								continue
 							end
-	
+		
+							local currentFloor = _G.GetCurrentCastleFloor()
+							local targetFloorStr = Options.CastleFloorDropdown.Value
+							local action = Options.ActionOnFloorDropdown.Value
+							local targetFloorNum = tonumber(targetFloorStr)
+		
 							local mainWorld = workspace:FindFirstChild("__Main") and workspace.__Main:FindFirstChild("__World")
 							if mainWorld then
 								local room1 = mainWorld:FindFirstChild("Room_1")
@@ -4474,136 +4383,161 @@ local function RunMainScript()
 									end
 								end
 							end
-	
-							local targetFloorStr = Options.CastleFloorDropdown.Value
-							local action = Options.ActionOnFloorDropdown.Value
-	
-							if targetFloorStr ~= "None" and action ~= "Do Nothing" then
-								local currentFloor = _G.GetCurrentCastleFloor()
-								local targetFloorNum = tonumber(targetFloorStr)
-	
-								if currentFloor and targetFloorNum then
-									local shouldAct = currentFloor >= targetFloorNum
-	
-									if shouldAct then
-										if action == "Leave Castle" then
-											Fluent:Notify({
-												Title = "Auto Farm Castle",
-												Content = "Target floor " .. targetFloorStr .. " reached. Leaving Castle.",
-												Duration = 5
-											})
-											pcall(_G.leaveCastle)
-											task.wait(5)
-											break
-										elseif action == "Rejoin Castle" then
-											Fluent:Notify({
-												Title = "Auto Farm Castle",
-												Content = "Target floor " .. targetFloorStr .. " reached. Rejoining Castle.",
-												Duration = 5
-											})
-											pcall(_G.rejoinCastle)
-											task.wait(5)
-											break
-										end
-									end
-								end
-							end
-	
+		
 							local serverFolder = workspace.__Main.__Enemies:FindFirstChild("Server")
 							local nearestEnemy = nil
 							local minDistance = math.huge
+							local nearestBossInstance = nil
+							local minBossDistance = math.huge
 							local hasAliveServerEnemy = false
-	
+							local hasAliveBoss = false
+		
+							local focusBosses = Options.FocusBossesToggle and Options.FocusBossesToggle.Value or false
+		
+							local function processEnemy(enemyInstance)
+								 if not enemyInstance or not enemyInstance:IsA("BasePart") then return end
+								local isDead = enemyInstance:GetAttribute("Dead") or false
+								if not isDead then
+									hasAliveServerEnemy = true
+									local distance = (playerRoot.Position - enemyInstance.Position).Magnitude
+		
+									if distance < minDistance then
+										minDistance = distance
+										nearestEnemy = enemyInstance
+									end
+		
+									local scale = enemyInstance:GetAttribute("Scale")
+									local isBoss = (type(scale) == "number" and scale >= 2)
+		
+									if isBoss then
+										hasAliveBoss = true
+										if distance < minBossDistance then
+											minBossDistance = distance
+											nearestBossInstance = enemyInstance
+										end
+									end
+								end
+							end
+		
 							if serverFolder then
-								for _, enemy in ipairs(serverFolder:GetChildren()) do
-									if enemy:IsA("Folder") or enemy:IsA("Model") then
-										for _, enemyInstance in ipairs(enemy:GetChildren()) do
-											if enemyInstance:IsA("BasePart") then
-												local isDead = enemyInstance:GetAttribute("Dead") or false
-												if not isDead then
-													hasAliveServerEnemy = true
-													local distance = (playerRoot.Position - enemyInstance.Position).Magnitude
-													if distance < minDistance then
-														minDistance = distance
-														nearestEnemy = enemyInstance
-													end
-												end
-											end
+								for _, enemySource in ipairs(serverFolder:GetChildren()) do
+									 if enemySource:IsA("Folder") or enemySource:IsA("Model") then
+										for _, enemyInstance in ipairs(enemySource:GetChildren()) do
+											processEnemy(enemyInstance)
 										end
-									elseif enemy:IsA("BasePart") then
-										local isDead = enemy:GetAttribute("Dead") or false
-										if not isDead then
-											hasAliveServerEnemy = true
-											local distance = (playerRoot.Position - enemy.Position).Magnitude
-											if distance < minDistance then
-												minDistance = distance
-												nearestEnemy = enemy
+									elseif enemySource:IsA("BasePart") then
+										processEnemy(enemySource)
+									end
+								end
+							end
+		
+							local finalTargetInstance = nil
+							local finalMinDistance = math.huge
+							if focusBosses and hasAliveBoss then
+								finalTargetInstance = nearestBossInstance
+								finalMinDistance = minBossDistance
+							elseif hasAliveServerEnemy then
+								 finalTargetInstance = nearestEnemy
+								 finalMinDistance = minDistance
+							end
+		
+							local performedFloorAction = false
+							if targetFloorStr ~= "None" and action ~= "Do Nothing" then
+								if currentFloor and targetFloorNum then
+									local isOnTargetFloor = (currentFloor == targetFloorNum)
+									local canActBasedOnFloor = (currentFloor >= targetFloorNum)
+		
+									if action == "Leave Castle" and canActBasedOnFloor then
+										Fluent:Notify({ Title = "Auto Farm Castle", Content = "Target floor " .. targetFloorStr .. " reached. Leaving Castle.", Duration = 5 })
+										pcall(_G.leaveCastle)
+										task.wait(5)
+										performedFloorAction = true
+										break
+									elseif action == "Rejoin Castle" and canActBasedOnFloor then
+										Fluent:Notify({ Title = "Auto Farm Castle", Content = "Target floor " .. targetFloorStr .. " reached. Rejoining Castle.", Duration = 5 })
+										pcall(_G.rejoinCastle)
+										task.wait(5)
+										performedFloorAction = true
+										break
+									elseif action == "Leave After Boss" and isOnTargetFloor then
+										if targetFloorNum > 0 and targetFloorNum % 5 == 0 then
+											if not hasAliveBoss then
+												Fluent:Notify({ Title = "Auto Farm Castle", Content = "Boss on floor " .. targetFloorStr .. " defeated. Leaving Castle.", Duration = 5 })
+												pcall(_G.leaveCastle)
+												task.wait(5)
+												performedFloorAction = true
+												break
 											end
 										end
 									end
 								end
 							end
-	
-							if not hasAliveServerEnemy and mainWorld then
-								local highestRoomNum = 0
-								local nextRoom = nil
-								for _, room in ipairs(mainWorld:GetChildren()) do
-									local roomNum = tonumber(room.Name:match("Room_(%d+)"))
-									if roomNum and roomNum > highestRoomNum then
-										highestRoomNum = roomNum
-										nextRoom = room
+		
+							if not performedFloorAction then
+								if not hasAliveServerEnemy and mainWorld then
+									local highestRoomNum = 0
+									local nextRoom = nil
+									for _, room in ipairs(mainWorld:GetChildren()) do
+										local roomNum = tonumber(room.Name:match("Room_(%d+)"))
+										if roomNum and roomNum > highestRoomNum then
+											highestRoomNum = roomNum
+											nextRoom = room
+										end
 									end
-								end
-								if highestRoomNum > 0 then
-									local targetRoomName = "Room_" .. (highestRoomNum + 1)
-									local targetRoom = mainWorld:FindFirstChild(targetRoomName)
-									if not targetRoom then
-										targetRoom = nextRoom
-									end
-									if targetRoom and targetRoom:GetPivot() then
-										pcall(function()
-											_G.MoveToEnemy(targetRoom:GetPivot().Position, "Teleport", Options.CastleFarmTweenSpeedSlider.Value, false)
-										end)
-										task.wait()
-									end
-								end
-							end
-	
-							if nearestEnemy then
-								local nearestEnemyPosition = nearestEnemy.Position
-								local needsToMove = minDistance > 5
-								if needsToMove then
-									local moveMode = Options.CastleMoveModeDropdown.Value
-									pcall(function()
-										if moveMode == "Fast" then
-											_G.MoveToEnemy(nearestEnemy.Position, "Teleport", Options.CastleFarmTweenSpeedSlider.Value, false)
+									if highestRoomNum > 0 then
+										local targetRoomName = "Room_" .. (highestRoomNum + 1)
+										local targetRoom = mainWorld:FindFirstChild(targetRoomName)
+										if not targetRoom then
+											targetRoom = nextRoom
+										end
+										if targetRoom and targetRoom:GetPivot() then
+											pcall(function()
+												_G.MoveToEnemy(targetRoom:GetPivot().Position, "Teleport", Options.CastleFarmTweenSpeedSlider.Value, false)
+											end)
+											task.wait()
 										else
-											_G.MoveToEnemy(nearestEnemyPosition, "Tween", Options.CastleFarmTweenSpeedSlider.Value or 150)
+											task.wait(0.5)
 										end
-									end)
+									else
+										task.wait(0.5)
+									end
+								elseif finalTargetInstance then
+									local targetPosition = finalTargetInstance.Position
+									local needsToMove = finalMinDistance > 5
+									if needsToMove then
+										local moveMode = Options.CastleMoveModeDropdown.Value
+										local tweenSpeed = Options.CastleFarmTweenSpeedSlider.Value or 150
+										pcall(function()
+											if moveMode == "Fast" then
+												_G.MoveToEnemy(targetPosition, "Teleport", tweenSpeed, false)
+											else
+												_G.MoveToEnemy(targetPosition, "Tween", tweenSpeed)
+											end
+										end)
+									end
+		
+									if hasFreePet() then
+										pcall(function()
+											_G.AttackEnemy(finalTargetInstance.Name)
+										end)
+									end
+								else
+									task.wait(0.5)
 								end
-	
-								if hasFreePet() then
-									pcall(function()
-										_G.AttackEnemy(nearestEnemy.Name)
-									end)
-								end
-							else
-								task.wait(0.5)
 							end
-	
+		
 							task.wait(Options.CastleFarmDelaySlider.Value)
 						end
-	
-						local playerRoot = getPlayerRoot()
-						if playerRoot and playerRoot.Anchored then
-							playerRoot.Anchored = false
+		
+						local playerRootOnExit = getPlayerRoot()
+						if playerRootOnExit and playerRootOnExit.Anchored then
+							playerRootOnExit.Anchored = false
 						end
 					end)
 				else
-					local playerRoot = getPlayerRoot()
-					if playerRoot and playerRoot.Anchored then
-						playerRoot.Anchored = false
+					local playerRootOnDisable = getPlayerRoot()
+					if playerRootOnDisable and playerRootOnDisable.Anchored then
+						playerRootOnDisable.Anchored = false
 					end
 				end
 			end
@@ -6132,7 +6066,7 @@ local function RunMainScript()
 		task.wait()
 		Tabs.Infos:AddSection("Support")
 		Tabs.Infos:AddParagraph({
-			Title = "Version 2.0.10",
+			Title = "Version 2.1",
 			Content = "Buy permanent key on discord!"
 		})
 		task.wait()
