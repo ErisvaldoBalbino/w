@@ -2261,8 +2261,8 @@ _G.Toggle_AutoFarmCastle = Tab_Castle:CreateToggle({
                             local targetPosition = finalTargetInstance.Position
                             local needsToMove = finalMinDistance > 5
                             if needsToMove then
-                                local moveMode = _G.AriseSettings.CastleMoveMode or "Slow"
-                                local tweenSpeed = _G.AriseSettings.CastleTweenSpeed or 150
+                                local moveMode = Dropdown_CastleMoveMode.CurrentOption[1]
+                                local tweenSpeed = Slider_CastleFarmTweenSpeed.CurrentValue
                                 pcall(function()
                                     _G.MoveToEnemy(targetPosition, moveMode, tweenSpeed, true)
                                 end)
@@ -2277,7 +2277,7 @@ _G.Toggle_AutoFarmCastle = Tab_Castle:CreateToggle({
                         end
                     end
 
-                    local delay = _G.Slider_CastleFarmDelay and _G.Slider_CastleFarmDelay.CurrentValue or 0.1
+                    local delay = Slider_CastleFarmDelay.CurrentValue
                     task.wait(delay)
 
                 end
