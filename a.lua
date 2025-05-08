@@ -466,6 +466,7 @@ local function RunMainScript()
 		Rank = Window:AddTab({ Title = "Rank", Icon = "swords" }),
 		Raid = Window:AddTab({ Title = "Raid", Icon = "shield" }),
 		Teleport = Window:AddTab({ Title = "Teleport", Icon = "map-pin" }),
+		Quests = Window:AddTab({ Title = "Quests", Icon = "archive" }),
 		Sell = Window:AddTab({ Title = "Sell", Icon = "dollar-sign" }),
 		Mount = Window:AddTab({ Title = "Mount", Icon = "car" }),
 		Shop = Window:AddTab({ Title = "Shop", Icon = "shopping-cart" }),
@@ -585,6 +586,22 @@ local function RunMainScript()
 		"Aira",
 		"Momo",
 		"Okarun"
+	}
+	
+	getgenv().dailyQuests = {
+		"DailyTime",
+		"DailyEnemy",
+		"DailyDungeon",
+		"DailyBrute",
+		"DailyArise",
+	}
+	
+	getgenv().weeklyQuests = {
+		"WeeklyArise",
+		"WeeklyBrute",
+		"WeeklyDungeon",
+		"WeeklyEnemy",
+		"WeeklyTime"
 	}
 	
 	local rankMap = {
@@ -2470,6 +2487,34 @@ local function RunMainScript()
 		return randomName
 	end
 	
+	_G.RedeemDailyQuest = function(quest)
+		local args = {
+			{
+				{
+					Id = quest,
+					Type = "Daily",
+					Event = "ClaimQuest"
+				},
+				"\011"
+			}
+		}
+		dataRemoteEvent:FireServer(unpack(args))
+	end
+	
+	_G.RedeemWeeklyQuest = function(quest)
+		local args = {
+			{
+				{
+					Id = quest,
+					Type = "Weekly",
+					Event = "ClaimQuest"
+				},
+				"\011"
+			}
+		}
+		dataRemoteEvent:FireServer(unpack(args))
+	end
+	
 	--endofdef--
 	
 	local isInitializingUI = true
@@ -2822,7 +2867,7 @@ local function RunMainScript()
 											["Event"] = "PunchAttack",
 											["Enemy"] = nearestEnemy.Name
 										},
-										[2] = "\5"
+										[2] = "\005"
 									}
 								}
 								game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
@@ -3229,8 +3274,8 @@ local function RunMainScript()
 	
 	Tabs.Winter:AddSlider("WinterServerHopDelay", {
 		Title = "Server Hop Delay (s)",
-		Default = 5,
-		Min = 0,
+		Default = 30,
+		Min = 10,
 		Max = 30,
 		Rounding = 0.5,
 		Callback = function(Value)
@@ -3238,384 +3283,534 @@ local function RunMainScript()
 		end
 	})
 	
-	-- =========================================================================
-	-- Main Toggle Callback
-	-- =========================================================================
-	Tabs.Winter:AddToggle("WinterFarmToggle", {
+	Tabs.Winter:AddToggle("WinterAutoFarm", {
 		Title = "Auto Winter Farm",
 		Default = false,
 		Callback = function(Value)
 			_G.AriseSettings.Toggles.AutoWinter = Value
 			if Value then
 				spawn(function()
-					-- == Local State Variables (Reset on Activation) ==
-					local previousPriority = _G.ActivityPriority
-					local wasInEventWindow = false
-					local snowMonarchKilledThisWindow = false
-					local larudaKilledThisWindow = false
-					local hasAttemptedMonarchWaitThisCycle = false
-					local lastTargetedMonarchInstance = nil
-					local lastNotificationTime = 0
-					local lastNotifyContent = {}
-					local eventCycleCompletedThisWindow = false
+					-- State variables
+					local state = {
+						previousPriority = _G.ActivityPriority,
+						inEventWindow = false,
+						bosses = {
+							snowMonarchKilled = false,
+							larudaKilled = false
+						},
+						monarchWaitAttempted = false,
+						lastMonarchInstance = nil,
+						notifications = {
+							lastTime = 0,
+							history = {}
+						},
+						cycleCompleted = false
+					}
 	
-					-- == Debounced Notification Helper ==
-					local function Notify(title, content, duration, image)
+					local function notify(title, content, duration, image)
 						local currentTime = tick()
-						if currentTime - lastNotificationTime >= NOTIFICATION_DEBOUNCE_SECONDS or not table.find(lastNotifyContent, content) then
-							if Fluent and Fluent.Notify then
-								Fluent:Notify({ Title = title or "Auto Winter", Content = content or "", Duration = duration or 5 })
-							else
-								print(("[Auto Winter] %s: %s"):format(title or "Info", content or ""))
+						if currentTime - state.notifications.lastTime >= NOTIFICATION_DEBOUNCE_SECONDS or 
+						   not table.find(state.notifications.history, content) then
+							
+							Fluent:Notify({ 
+								Title = title or "Auto Winter", 
+								Content = content or "", 
+								Duration = duration or 5,
+							})
+							
+							state.notifications.lastTime = currentTime
+							table.insert(state.notifications.history, 1, content)
+							
+							if #state.notifications.history > 3 then 
+								table.remove(state.notifications.history) 
 							end
-							lastNotificationTime = currentTime
-							table.insert(lastNotifyContent, 1, content)
-							if #lastNotifyContent > 3 then table.remove(lastNotifyContent) end
 						end
 					end
 	
-					-- == Main Loop ==
-					while Options.WinterFarmToggle.Value do
-						local loopStartTime = tick()
-						local playerRoot = getPlayerRoot()
-	
-						if not playerRoot then task.wait(5); continue end
-						if not Options.WinterFarmToggle.Value then break end
-	
-						local currentTime = os.date("*t")
-						local minutes = currentTime.min
-						local seconds = currentTime.sec
-						-- CHANGE 1: Define event window ONLY as xx:10 to xx:25
-						local isEventWindow = (minutes >= 10 and minutes < 25)
-	
-						-- Reset flags on new window start
-						if isEventWindow and not wasInEventWindow then
-							--Notify("Auto Winter", "Event window started. Status reset.", 4, "info")
-							snowMonarchKilledThisWindow = false
-							larudaKilledThisWindow = false
-							hasAttemptedMonarchWaitThisCycle = false
-							lastTargetedMonarchInstance = nil
-							eventCycleCompletedThisWindow = false
-							lastNotifyContent = {}
-						end
-						wasInEventWindow = isEventWindow
-	
-						-- 1. Pre-computation / Checks (Dungeon/Castle)
-						if _G.IsInDungeon() or _G.IsInCastle() then
-							--Notify("Auto Winter Paused", "Inside Dungeon/Castle.", 5, "warning")
-							if _G.ActivityPriority == "WinterFarming" then _G.ActivityPriority = previousPriority or "None" end
-							task.wait(5); continue
+					local function handleOutsideEventWindow(playerRoot, currentTime)
+						if _G.ActivityPriority == "WinterFarming" then
+							
+							_G.ActivityPriority = Options.AutoFarmToggle.Value and "Farming" or "None"
+							
+							if _G.SavedFarmPosition then
+								_G.TeleportTo(_G.SavedFarmPosition)
+								task.wait(TELEPORT_WAIT_TIME)
+								playerRoot = getPlayerRoot()
+								if playerRoot then playerRoot.Anchored = false end
+							end
 						end
 	
-						-- 2. Logic OUTSIDE Event Window
-						if not isEventWindow then
-							if _G.ActivityPriority == "WinterFarming" then
-								--Notify("Auto Winter", "Event window ended.", 4, "info")
-								if Options.AutoFarmToggle.Value then
-									_G.ActivityPriority = "Farming"
-								else
-									_G.ActivityPriority = "None"
-								end
-								if _G.SavedFarmPosition then
-									--Notify("Auto Winter", "Returning to saved farm position.", 4, "loading")
-									_G.TeleportTo(_G.SavedFarmPosition)
-									task.wait(TELEPORT_WAIT_TIME)
-									playerRoot = getPlayerRoot(); if playerRoot then playerRoot.Anchored = false end
+						local minutes, seconds = currentTime.min, currentTime.sec
+						local targetMinute, targetHour = 10, currentTime.hour
+						local waitSeconds = 0
+						
+						if minutes < 10 then
+							waitSeconds = (targetMinute - minutes - 1) * 60 + (60 - seconds)
+						else
+							targetHour = (targetHour + 1) % 24
+							waitSeconds = ((targetMinute + 60) - minutes - 1) * 60 + (60 - seconds)
+						end
+						
+						waitSeconds = math.max(1, waitSeconds)
+						notify("Auto Winter Paused", 
+							  "Waiting " .. math.ceil(waitSeconds) .. "s until " .. 
+							  string.format("%02d:%02d", targetHour, targetMinute), 5)
+	
+						local waitEndTime = tick() + waitSeconds
+						while tick() < waitEndTime and Options.WinterAutoFarm.Value do
+							local now = os.date("*t")
+							if (now.min >= 10 and now.min < 25) then break end
+							task.wait(1)
+						end
+						
+						return true
+					end
+	
+					local function handleCompletedCycle(playerRoot, currentTime)
+						--notify("Auto Winter", "Event cycle completed this window. Waiting.", 5)
+						
+						_G.ActivityPriority = Options.AutoFarmToggle.Value and "Farming" or "None"
+						
+						if _G.SavedFarmPosition then
+							local distanceToSaved = playerRoot and 
+												  (playerRoot.Position - _G.SavedFarmPosition.Position).Magnitude or math.huge
+							if distanceToSaved > 1000 then
+								_G.TeleportTo(_G.SavedFarmPosition)
+								task.wait(TELEPORT_WAIT_TIME)
+								playerRoot = getPlayerRoot()
+								if playerRoot then playerRoot.Anchored = false end
+							end
+						end
+	
+						local minutes, seconds = currentTime.min, currentTime.sec
+						local waitSeconds = (25 - minutes - 1) * 60 + (60 - seconds)
+						waitSeconds = math.max(1, waitSeconds)
+						
+						notify("Auto Winter", 
+							  "Waiting " .. math.ceil(waitSeconds) .. "s until event window ends (xx:25).", 5)
+	
+						local waitEndTime = tick() + waitSeconds
+						while tick() < waitEndTime and Options.WinterAutoFarm.Value do
+							local now = os.date("*t")
+							if not (now.min >= 10 and now.min < 25) then break end
+							task.wait(1)
+						end
+						
+						return true
+					end
+	
+					local function checkMonarchStatus()
+						if not state.lastMonarchInstance or state.bosses.snowMonarchKilled then return end
+						
+						local monarchStillExists, isDead = false, true
+						pcall(function()
+							if state.lastMonarchInstance and state.lastMonarchInstance.Parent ~= nil then
+								monarchStillExists = true
+								isDead = state.lastMonarchInstance:GetAttribute("Dead") or false
+							end
+						end)
+						
+						if not monarchStillExists or isDead then
+							notify("Auto Winter", "Snow Monarch defeated/despawned.", 4, "success")
+							state.bosses.snowMonarchKilled = true
+							state.lastMonarchInstance = nil
+							state.monarchWaitAttempted = true
+						end
+					end
+	
+					local function processWinterEnemies(playerRoot)
+						local serverFolder = workspace:FindFirstChild("__Main") and 
+										   workspace.__Main:FindFirstChild("__Enemies") and 
+										   workspace.__Main.__Enemies:FindFirstChild("Server")
+										   
+						if not serverFolder then 
+							notify("Auto Winter Error", "Enemy folder not found.", 5)
+							return nil 
+						end
+	
+						local results = {
+							nearestEnemy = nil,
+							minDistance = MIN_DISTANCE_WINTER + 1,
+							aliveCount = 0,
+							bosses = {
+								highFrost = nil,
+								laruda = nil,
+								snowMonarch = nil
+							}
+						}
+	
+						for _, enemyInstance in ipairs(serverFolder:GetChildren()) do
+							if enemyInstance and enemyInstance:IsA("BasePart") and 
+							   enemyInstance.Parent == serverFolder then
+								
+								local isDead = enemyInstance:GetAttribute("Dead") or false
+								if not isDead then
+									local enemyPosition = enemyInstance.Position
+									if (enemyPosition - getgenv().WINTER_EVENT_POSITION.Position).Magnitude < MIN_DISTANCE_WINTER then
+										
+										local readableName = getReadableNameFromInstance(enemyInstance)
+										local isIgnored = _G.shouldIgnoreWinterMob(readableName)
+										
+										if not isIgnored then
+											results.aliveCount = results.aliveCount + 1
+											local distance = (playerRoot.Position - enemyPosition).Magnitude
+											
+											if readableName == "Snow Monarch" then 
+												results.bosses.snowMonarch = enemyInstance
+											elseif readableName == "Laruda" then 
+												results.bosses.laruda = enemyInstance
+											elseif readableName == "High Frost" then 
+												results.bosses.highFrost = enemyInstance
+											else 
+												if distance < results.minDistance then 
+													results.minDistance = distance
+													results.nearestEnemy = enemyInstance 
+												end
+											end
+										end
+									end
 								end
 							end
+						end
+						
+						return results
+					end
 	
-							-- CHANGE 2: Adjust wait calculation for next window (always xx:10)
-							local wait_seconds = 0; local targetMinute = 10; local targetHour = currentTime.hour
-							if minutes < 10 then
-								-- Waiting for xx:10 of the current hour
-								wait_seconds = (targetMinute - minutes - 1) * 60 + (60 - seconds)
-							else -- minutes >= 25 (since isEventWindow is false)
-								-- Waiting for xx:10 of the *next* hour
-								targetHour = (targetHour + 1) % 24
-								wait_seconds = ((targetMinute + 60) - minutes - 1) * 60 + (60 - seconds)
+					local function determineTarget(enemies)
+						if not enemies then return nil end
+						
+						if enemies.bosses.snowMonarch and 
+						   not _G.shouldIgnoreWinterMob("Snow Monarch") and 
+						   not state.bosses.snowMonarchKilled then
+							return enemies.bosses.snowMonarch
+						elseif enemies.bosses.laruda and 
+							   not _G.shouldIgnoreWinterMob("Laruda") and 
+							   not state.bosses.larudaKilled then
+							return enemies.bosses.laruda
+						elseif enemies.bosses.highFrost and 
+							   not _G.shouldIgnoreWinterMob("High Frost") then
+							return enemies.bosses.highFrost
+						elseif enemies.nearestEnemy then
+							return enemies.nearestEnemy
+						end
+						
+						return nil
+					end
+	
+					local function attackTarget(targetEnemy, playerRoot)
+						if not targetEnemy then return false end
+						
+						local targetName = getReadableNameFromInstance(targetEnemy)
+						local targetPosition = targetEnemy.Position
+						local distanceToTarget = (playerRoot.Position - targetPosition).Magnitude
+						
+						if distanceToTarget > 15 then
+							local moveMode = (Options.WinterMoveModeDropdown.Value) or "Slow"
+							local tweenSpeed = (Options.WinterTweenSpeedSlider.Value) or 150
+							
+							_G.MoveToEnemy(
+								targetPosition, 
+								moveMode == "Fast" and "Teleport" or "Tween", 
+								tweenSpeed, 
+								false
+							)
+							task.wait(0.1)
+						end
+						
+						if hasFreePet() then
+							_G.AttackEnemy(targetEnemy.Name)
+							
+							if targetName == "Snow Monarch" then 
+								state.lastMonarchInstance = targetEnemy
+							elseif targetName == "Laruda" then
+								task.spawn(function()
+									task.wait(0.5)
+									if targetEnemy and targetEnemy:GetAttribute("Dead") then
+										state.bosses.larudaKilled = true
+									end
+								end)
 							end
-							wait_seconds = math.max(1, wait_seconds)
-							Notify("Auto Winter Paused", "Waiting " .. math.ceil(wait_seconds) .. "s until " .. string.format("%02d:%02d", targetHour, targetMinute), 5, "timer")
+							
+							return true
+						else
+							task.wait(0.5)
+							return false
+						end
+					end
 	
-							local waitEndTime = tick() + wait_seconds
-							while tick() < waitEndTime and Options.WinterFarmToggle.Value do
-								local now = os.date("*t")
-								-- CHANGE 2.1: Update break condition in wait loop
-								if (now.min >= 10 and now.min < 25) then break end
+					local function waitForMonarch(windowStartTime, minutesIntoEvent)
+						local monarchWaitSliderValue = (Options.WinterServerHopDelay.Value) or 30
+						local canWaitForMonarch = not _G.shouldIgnoreWinterMob("Snow Monarch")
+						
+						if not (state.monarchWaitAttempted or state.bosses.snowMonarchKilled) and 
+						   tonumber(minutesIntoEvent) <= tonumber(MONARCH_MAX_SPAWN_MINUTE_IN_WINDOW) and
+						   canWaitForMonarch and monarchWaitSliderValue > 0 then
+							
+							local maxWaitTime, waitReason
+							
+							if state.bosses.larudaKilled then
+								maxWaitTime = POST_LARUDA_MONARCH_WAIT_SECONDS
+								waitReason = "post-Laruda"
+							else
+								maxWaitTime = monarchWaitSliderValue
+								waitReason = "slider setting"
+							end
+							
+							--[[notify("Auto Winter", 
+								  "Island clear. Waiting up to " .. string.format("%.0f", maxWaitTime) .. 
+								  "s for Monarch ("..waitReason..")...", 
+								  math.max(5, maxWaitTime), "timer")]]
+								  
+							state.monarchWaitAttempted = true
+							local waitStart = tick()
+							local foundMonarch = false
+							
+							while tick() - waitStart < maxWaitTime and 
+								  Options.WinterAutoFarm.Value and 
+								  not state.bosses.snowMonarchKilled do
+								
+								local monarchCheckFolder = workspace:FindFirstChild("__Main") and
+														workspace.__Main:FindFirstChild("__Enemies") and
+														workspace.__Main.__Enemies:FindFirstChild("Server")
+														
+								if monarchCheckFolder then
+									for _, enemy in ipairs(monarchCheckFolder:GetChildren()) do
+										if enemy and enemy:IsA("BasePart") and 
+										   getReadableNameFromInstance(enemy) == "Snow Monarch" and 
+										   not (enemy:GetAttribute("Dead") or false) then
+											
+											foundMonarch = true
+											break
+										end
+									end
+								end
+								
+								if foundMonarch then
+									--notify("Auto Winter", "Snow Monarch detected during wait!", 3, "success")
+									break
+								end
+								
 								task.wait(1)
 							end
-							continue
+							
+							return true
 						end
-	
-						-- 3. Logic INSIDE Event Window (Now only xx:10 to xx:25)
-						if isEventWindow then
-							-- Skip event logic if cycle is already completed
-							if eventCycleCompletedThisWindow then
-								--Notify("Auto Winter", "Event cycle already completed. Waiting for window end.", 5, "info")
-								if Options.AutoFarmToggle.Value then
-									_G.ActivityPriority = "Farming"
-								else
-									_G.ActivityPriority = "None"
-								end
-								if _G.SavedFarmPosition then
-									local distanceToSaved = playerRoot and (playerRoot.Position - _G.SavedFarmPosition.Position).Magnitude or math.huge
-									if distanceToSaved > 1000 then -- Only teleport if far from SavedFarmPosition
-										--Notify("Auto Winter", "Returning to saved farm position.", 4, "loading")
-										_G.TeleportTo(_G.SavedFarmPosition)
-										task.wait(TELEPORT_WAIT_TIME)
-										playerRoot = getPlayerRoot(); if playerRoot then playerRoot.Anchored = false end
-									end
-								end
-	
-								-- CHANGE 3: Adjust wait calculation until window ends (always xx:25)
-								local wait_seconds = 0
-								-- We know minutes are >= 10 and < 25 here
-								wait_seconds = (25 - minutes - 1) * 60 + (60 - seconds)
-								wait_seconds = math.max(1, wait_seconds)
-								--Notify("Auto Winter", "Waiting " .. math.ceil(wait_seconds) .. "s until event window ends.", 5, "timer")
-	
-								local waitEndTime = tick() + wait_seconds
-								while tick() < waitEndTime and Options.WinterFarmToggle.Value do
-									local now = os.date("*t")
-									-- CHANGE 3.1: Update break condition in wait loop
-									if not (now.min >= 10 and now.min < 25) then break end
-									task.wait(1)
-								end
-								continue
-							end
-	
-							-- Set priority & Teleport if needed
-							if _G.ActivityPriority ~= "WinterFarming" then
-								--Notify("Auto Winter", "Setting activity to Winter.", 3, "info")
-								previousPriority = _G.ActivityPriority; _G.ActivityPriority = "WinterFarming"; task.wait(0.1)
-							end
-							if not _G.IsInWinterIsland() then
-								--Notify("Auto Winter", "Teleporting to Winter Island...", 4, "loading")
-								_G.TeleportTo(getgenv().WINTER_EVENT_POSITION); task.wait(TELEPORT_WAIT_TIME)
-								playerRoot = getPlayerRoot()
-								if not playerRoot then Notify("Auto Winter Error", "Player lost after TP.", 5); task.wait(5); continue end
-								if playerRoot then playerRoot.Anchored = false end
-								if not _G.IsInWinterIsland() then Notify("Auto Winter Error", "Failed TP to Winter Island.", 5); task.wait(3); continue end
-							end
-	
-							-- Main logic block for Winter activity
-							if _G.ActivityPriority == "WinterFarming" then
-								-- Check status of previously targeted Monarch
-								if lastTargetedMonarchInstance and not snowMonarchKilledThisWindow then
-									local monarchStillExists, isDead = false, true
-									local success, _ = pcall(function()
-										if lastTargetedMonarchInstance.Parent ~= nil then monarchStillExists = true; isDead = lastTargetedMonarchInstance:GetAttribute("Dead") or false end end)
-									if not success or not monarchStillExists or isDead then
-										--Notify("Auto Winter", "Snow Monarch defeated/despawned.", 4, "success")
-										snowMonarchKilledThisWindow = true; lastTargetedMonarchInstance = nil
-										hasAttemptedMonarchWaitThisCycle = true
-									end
-								end
-	
-								-- Find enemies
-								local serverFolder = workspace:FindFirstChild("__Main") and workspace:FindFirstChild("__Main"):FindFirstChild("__Enemies") and workspace:FindFirstChild("__Main"):FindFirstChild("__Enemies"):FindFirstChild("Server")
-								if not serverFolder then Notify("Auto Winter Error", "Enemy folder not found.", 5); task.wait(5); continue end
-	
-								local minDistance = MIN_DISTANCE_WINTER + 1; local nearestEnemyInstance = nil
-								local aliveNonIgnoredCount = 0
-								local hasHighFrost, hasLaruda, hasSnowMonarch = false, false, false
-								local highFrostInstance, larudaInstance, snowMonarchInstance = nil, nil, nil
-								local serverEnemies = serverFolder:GetChildren()
-	
-								for _, enemyInstance in ipairs(serverEnemies) do
-									if enemyInstance and enemyInstance:IsA("BasePart") and enemyInstance.Parent == serverFolder then
-										local isDead = enemyInstance:GetAttribute("Dead") or false
-										if not isDead then
-											local enemyPosition = enemyInstance.Position
-											if (enemyPosition - getgenv().WINTER_EVENT_POSITION.Position).Magnitude < MIN_DISTANCE_WINTER then
-												local readableEnemyName = getReadableNameFromInstance(enemyInstance)
-												local isIgnored = _G.shouldIgnoreWinterMob(readableEnemyName)
-												if not isIgnored then
-													aliveNonIgnoredCount = aliveNonIgnoredCount + 1
-													local distance = (playerRoot.Position - enemyPosition).Magnitude
-													if readableEnemyName == "Snow Monarch" then hasSnowMonarch, snowMonarchInstance = true, enemyInstance
-													elseif readableEnemyName == "Laruda" then hasLaruda, larudaInstance = true, enemyInstance
-													elseif readableEnemyName == "High Frost" then hasHighFrost, highFrostInstance = true, enemyInstance
-													else if distance < minDistance then minDistance, nearestEnemyInstance = distance, enemyInstance end end
-												end
-											end
-										end
-									end
-								end
-	
-								-- Determine Target
-								local targetEnemy = nil
-								if hasSnowMonarch and not _G.shouldIgnoreWinterMob("Snow Monarch") and not snowMonarchKilledThisWindow then targetEnemy = snowMonarchInstance
-								elseif hasLaruda and not _G.shouldIgnoreWinterMob("Laruda") then targetEnemy = larudaInstance
-								elseif hasHighFrost and not _G.shouldIgnoreWinterMob("High Frost") then targetEnemy = highFrostInstance
-								elseif nearestEnemyInstance then targetEnemy = nearestEnemyInstance
-								end
-	
-								-- Action: Attack, Move, Wait, or Finish
-								if targetEnemy then
-									hasAttemptedMonarchWaitThisCycle = false
-									local targetName = getReadableNameFromInstance(targetEnemy)
-									local targetPosition = targetEnemy.Position
-									local distanceToTarget = (playerRoot.Position - targetPosition).Magnitude
-									if distanceToTarget > 15 then
-										local moveMode = Options.WinterMoveModeDropdown.Value or "Slow"
-										local tweenSpeed = Options.WinterTweenSpeedSlider.Value or 150
-										_G.MoveToEnemy(targetPosition, moveMode == "Fast" and "Teleport" or "Tween", tweenSpeed, false)
-										task.wait(0.1)
-									end
-									if hasFreePet() then
-										--Notify("Auto Winter", "Attacking " .. targetName, 3, "info")
-										_G.AttackEnemy(targetEnemy.Name)
-										if targetEnemy == snowMonarchInstance then lastTargetedMonarchInstance = targetEnemy
-										elseif targetName == "Laruda" then larudaKilledThisWindow = true
-										end
-									else
-										task.wait(0.5)
-									end
-								else
-									-- CHANGE 4: Simplify windowStartMinute calculation
-									local windowStartMinute = 10 -- Always starts at 10 now
-									local secondsSinceWindowStart = (minutes - windowStartMinute) * 60 + seconds
-									local minutesIntoEvent = secondsSinceWindowStart / 60
-	
-									if not hasHighFrost and not hasLaruda and not hasSnowMonarch and aliveNonIgnoredCount == 0 and secondsSinceWindowStart < HIGH_FROST_APPROX_SPAWN_SECONDS and not _G.shouldIgnoreWinterMob("High Frost") then
-										local waitTime = math.max(1, HIGH_FROST_APPROX_SPAWN_SECONDS - secondsSinceWindowStart)
-										Notify("Auto Winter", "Waiting for High Frost (" .. string.format("%.0f", waitTime) .. "s left)...", math.min(5, waitTime), "timer")
-										task.wait(waitTime)
-										continue
-									end
-	
-									local monarchWaitSliderValue = tonumber(Options.WinterServerHopDelay.Value) or 5
-									local canWaitForMonarch = not _G.shouldIgnoreWinterMob("Snow Monarch")
-									local conditionsMetForWait = aliveNonIgnoredCount == 0 and
-																not hasAttemptedMonarchWaitThisCycle and
-																not snowMonarchKilledThisWindow and
-																minutesIntoEvent <= MONARCH_MAX_SPAWN_MINUTE_IN_WINDOW and
-																canWaitForMonarch and
-																monarchWaitSliderValue > 0
-	
-									if conditionsMetForWait then
-										local maxWaitTime
-										local waitReason
-										if larudaKilledThisWindow then
-											maxWaitTime = POST_LARUDA_MONARCH_WAIT_SECONDS
-											waitReason = "post-Laruda"
-										else
-											maxWaitTime = monarchWaitSliderValue
-											waitReason = "slider setting"
-										end
-	
-										--Notify("Auto Winter", "Island clear. Waiting up to " .. string.format("%.0f", maxWaitTime) .. "s for Monarch ("..waitReason..")...", math.max(5, maxWaitTime), "timer")
-										hasAttemptedMonarchWaitThisCycle = true
-										local waitStart = tick()
-										local foundMonarchDuringWait = false
-	
-										while tick() - waitStart < maxWaitTime and Options.WinterFarmToggle.Value and not snowMonarchKilledThisWindow do
-											local monarchCheckFolder = workspace:FindFirstChild("__Main"):FindFirstChild("__Enemies"):FindFirstChild("Server")
-											if monarchCheckFolder then
-												for _, enemy in ipairs(monarchCheckFolder:GetChildren()) do
-													if enemy and enemy:IsA("BasePart") and getReadableNameFromInstance(enemy) == "Snow Monarch" and not (enemy:GetAttribute("Dead") or false) then
-														foundMonarchDuringWait = true; break
-													end
-												end
-											end
-											if foundMonarchDuringWait then
-												Notify("Auto Winter", "Snow Monarch detected during wait!", 3)
-												break
-											end
-											task.wait(1)
-										end
-	
-										if not foundMonarchDuringWait and not snowMonarchKilledThisWindow then
-											--Notify("Auto Winter", "Snow Monarch wait time ("..string.format("%.0f", maxWaitTime).."s) finished.", 4, "info")
-										end
-	
-										task.wait(0.1); continue
-									elseif aliveNonIgnoredCount == 0 then
-										-- Island clear AND (wait done or not needed)
-										if snowMonarchKilledThisWindow then Notify("Auto Winter", "Island clear. Monarch already dealt with.", 4, "info")
-										elseif hasAttemptedMonarchWaitThisCycle then Notify("Auto Winter", "Island clear after waiting.", 4, "info")
-										elseif monarchWaitSliderValue <= 0 then Notify("Auto Winter", "Island clear. Monarch wait disabled (slider=0).", 4, "info")
-										elseif not canWaitForMonarch then Notify("Auto Winter Warning", "Island clear. Cannot wait: Snow Monarch is ignored.", 5, "warning")
-										elseif minutesIntoEvent > MONARCH_MAX_SPAWN_MINUTE_IN_WINDOW then Notify("Auto Winter", "Island clear. Too late for Monarch spawn.", 4, "info")
-										else Notify("Auto Winter", "Island clear. Proceeding...", 4, "info") end
-	
-										eventCycleCompletedThisWindow = true
-	
-										task.wait(1)
-	
-										if Options.WinterServerHop.Value then
-											Notify("Auto Winter", "Event cycle complete. Hopping server...", 5, "loading")
-											task.wait(1.5)
-											_G.HopToServer()
-											Notify("Auto Winter", "Server hop initiated. Waiting...", SERVER_HOP_WAIT_TIME, "timer")
-											task.wait(SERVER_HOP_WAIT_TIME)
-											snowMonarchKilledThisWindow = false
-											larudaKilledThisWindow = false
-											hasAttemptedMonarchWaitThisCycle = false
-											lastTargetedMonarchInstance = nil
-											lastNotifyContent = {}
-										else
-											Notify("Auto Winter", "Event cycle complete. Waiting for next window.", 5, "timer")
-											if Options.AutoFarmToggle.Value then
-												_G.ActivityPriority = "Farming"
-											else
-												_G.ActivityPriority = "None"
-											end
-											if _G.SavedFarmPosition then
-												local distanceToSaved = playerRoot and (playerRoot.Position - _G.SavedFarmPosition.Position).Magnitude or math.huge
-												if distanceToSaved > 10 then -- Only teleport if far from SavedFarmPosition
-													Notify("Auto Winter", "Returning to saved farm position.", 4, "loading")
-													_G.TeleportTo(_G.SavedFarmPosition)
-													task.wait(TELEPORT_WAIT_TIME)
-													playerRoot = getPlayerRoot(); if playerRoot then playerRoot.Anchored = false end
-												end
-											end
-											-- CHANGE 3 (Repeated logic block, needs same change): Adjust wait calculation until window ends (always xx:25)
-											local wait_seconds = 0
-											-- We know minutes are >= 10 and < 25 here
-											wait_seconds = (25 - minutes - 1) * 60 + (60 - seconds)
-											wait_seconds = math.max(1, wait_seconds)
-											Notify("Auto Winter", "Waiting " .. math.ceil(wait_seconds) .. "s until event window ends.", 5, "timer")
-	
-											local waitEndTime = tick() + wait_seconds
-											while tick() < waitEndTime and Options.WinterFarmToggle.Value do
-												local now = os.date("*t")
-												-- CHANGE 3.1 (Repeated logic block, needs same change): Update break condition in wait loop
-												if not (now.min >= 10 and now.min < 25) then break end
-												task.wait(1)
-											end
-										end
-										continue
-									else
-										--Notify("Auto Winter", "Only ignored mobs remaining. Waiting briefly...", 3, "timer")
-										task.wait(1)
-									end
-								end
-							end
-						end
-	
-						-- General loop delay
-						local delay = Options.WinterFarmDelaySlider.Value or 0.5
-						local elapsedTime = tick() - loopStartTime
-						if elapsedTime < delay then task.wait(delay - elapsedTime) else task.wait() end
+						
+						return false
 					end
 	
-					-- == Cleanup ==
+					local function finishEventCycle(playerRoot)
+						state.cycleCompleted = true
+						
+						if Options.WinterServerHop.Value then
+							--notify("Auto Winter", "Event cycle complete. Hopping server...", 5, "loading")
+							task.wait(1.5)
+							
+							for i = 1, 3 do
+								_G.HopToServer()
+								task.wait(15)
+							end
+							
+							--notify("Auto Winter", "Server hop initiated. Waiting...", SERVER_HOP_WAIT_TIME, "timer")
+							task.wait(SERVER_HOP_WAIT_TIME)
+							
+							state.bosses.snowMonarchKilled = false
+							state.bosses.larudaKilled = false
+							state.monarchWaitAttempted = false
+							state.lastMonarchInstance = nil
+							state.cycleCompleted = false
+							state.notifications.history = {}
+						else
+							if Options.AutoFarmToggle.Value then
+								_G.ActivityPriority = "Farming"
+							else
+								_G.ActivityPriority = "None"
+							end
+							
+							if _G.SavedFarmPosition then
+								local distanceToSaved = playerRoot and 
+													 (playerRoot.Position - _G.SavedFarmPosition.Position).Magnitude or math.huge
+								if distanceToSaved > 10 then
+									_G.TeleportTo(_G.SavedFarmPosition)
+									task.wait(TELEPORT_WAIT_TIME)
+									playerRoot = getPlayerRoot()
+									if playerRoot then playerRoot.Anchored = false end
+								end
+							end
+							
+							local currentTime = os.date("*t")
+							local minutes, seconds = currentTime.min, currentTime.sec
+							local waitSeconds = (25 - minutes - 1) * 60 + (60 - seconds)
+							waitSeconds = math.max(1, waitSeconds)
+							
+							local waitEndTime = tick() + waitSeconds
+							while tick() < waitEndTime and Options.WinterAutoFarm.Value do
+								local now = os.date("*t")
+								if not (now.min >= 10 and now.min < 25) then break end
+								task.wait(1)
+							end
+						end
+						
+						return true
+					end
+	
+					local function handleEmptyIsland(enemies, windowStartTime, minutesIntoEvent)
+						if enemies.aliveCount > 0 then return false end
+						
+						if not enemies.bosses.highFrost and 
+						   not enemies.bosses.laruda and 
+						   not enemies.bosses.snowMonarch and 
+						   windowStartTime < HIGH_FROST_APPROX_SPAWN_SECONDS and 
+						   not _G.shouldIgnoreWinterMob("High Frost") then
+							
+							local waitTime = math.max(1, HIGH_FROST_APPROX_SPAWN_SECONDS - windowStartTime)
+							notify("Auto Winter", 
+								  "Waiting for High Frost (" .. string.format("%.0f", waitTime) .. "s left)...", 
+								  math.min(5, waitTime))
+								  
+							task.wait(waitTime)
+							return true
+						end
+						
+						if waitForMonarch(windowStartTime, minutesIntoEvent) then
+							return true
+						end
+						
+						finishEventCycle(getPlayerRoot())
+						return true
+					end
+	
+					-- Main loop
+					while Options.WinterAutoFarm.Value do
+						local loopStartTime = tick()
+						local playerRoot = getPlayerRoot()
+						
+						if not playerRoot then 
+							task.wait(5)
+							continue
+						end
+						
+						if not Options.WinterAutoFarm.Value then break end
+						
+						local currentTime = os.date("*t")
+						local minutes, seconds = currentTime.min, currentTime.sec
+						local isEventWindow = (minutes >= 10 and minutes < 25)
+						
+						if isEventWindow and not state.inEventWindow then
+							--notify("Auto Winter", "Event window (10-25) started. Status reset.", 4, "info")
+							state.bosses.snowMonarchKilled = false
+							state.bosses.larudaKilled = false
+							state.monarchWaitAttempted = false
+							state.lastMonarchInstance = nil
+							state.cycleCompleted = false
+							state.notifications.history = {}
+						end
+						state.inEventWindow = isEventWindow
+						
+						if _G.IsInDungeon() or _G.IsInCastle() then
+							--notify("Auto Winter Paused", "Inside Dungeon/Castle.", 5, "warning")
+							if _G.ActivityPriority == "WinterFarming" then 
+								_G.ActivityPriority = state.previousPriority or "None" 
+							end
+							task.wait(5)
+							continue
+						end
+						
+						if not isEventWindow then
+							handleOutsideEventWindow(playerRoot, currentTime)
+							continue
+						end
+						
+						if state.cycleCompleted then
+							handleCompletedCycle(playerRoot, currentTime)
+							continue
+						end
+						
+						if _G.ActivityPriority ~= "WinterFarming" then
+							state.previousPriority = _G.ActivityPriority
+							_G.ActivityPriority = "WinterFarming"
+							task.wait(0.1)
+						end
+						
+						if not _G.IsInWinterIsland() then
+							--notify("Auto Winter", "Teleporting to Winter Island...", 4, "loading")
+							_G.TeleportTo(getgenv().WINTER_EVENT_POSITION)
+							task.wait(TELEPORT_WAIT_TIME)
+							
+							playerRoot = getPlayerRoot()
+							if not playerRoot then 
+								--notify("Auto Winter Error", "Player lost after TP.", 5, "error")
+								task.wait(5)
+								continue
+							end
+							
+							if playerRoot then playerRoot.Anchored = false end
+							
+							if not _G.IsInWinterIsland() then 
+								--notify("Auto Winter Error", "Failed TP to Winter Island.", 5, "error")
+								task.wait(3)
+								continue
+							end
+						end
+						
+						checkMonarchStatus()
+						
+						local enemies = processWinterEnemies(playerRoot)
+						if not enemies then 
+							task.wait(5)
+							continue 
+						end
+						
+						local windowStartMinute = 10
+						local secondsSinceWindowStart = (minutes - windowStartMinute) * 60 + seconds
+						local minutesIntoEvent = tonumber(secondsSinceWindowStart / 60)
+						
+						local targetEnemy = determineTarget(enemies)
+						
+						if targetEnemy then
+							state.monarchWaitAttempted = false
+							attackTarget(targetEnemy, playerRoot)
+						else
+							if handleEmptyIsland(enemies, secondsSinceWindowStart, minutesIntoEvent) then
+								continue
+							end
+						end
+						
+						local delay = (Options.WinterFarmDelaySlider.Value) or 0.5
+						local elapsedTime = tick() - loopStartTime
+						if elapsedTime < delay then 
+							task.wait(delay - elapsedTime) 
+						else 
+							task.wait() 
+						end
+					end
+					
 					if _G.ActivityPriority == "WinterFarming" then
-						if Options.AutoFarmToggle.Value then -- Fixed typo: ValueentValue -> Value
+						if Options.AutoFarmToggle.Value then
 							_G.ActivityPriority = "Farming"
 						else
 							_G.ActivityPriority = "None"
 						end
 					end
-					local finalRoot = getPlayerRoot(); if finalRoot and finalRoot.Anchored then finalRoot.Anchored = false end
+					
+					local finalRoot = getPlayerRoot()
+					if finalRoot and finalRoot.Anchored then 
+						finalRoot.Anchored = false 
+					end
 				end)
 			else
 				if _G.ActivityPriority == "WinterFarming" then
-					if Options.AutoFarmToggle.Value then _G.ActivityPriority = "Farming" else _G.ActivityPriority = "None" end
+					if Options.AutoFarmToggle.Value then 
+						_G.ActivityPriority = "Farming" 
+					else 
+						_G.ActivityPriority = "None" 
+					end
 				end
-				local finalRoot = getPlayerRoot(); if finalRoot and finalRoot.Anchored then finalRoot.Anchored = false end
+				
+				local finalRoot = getPlayerRoot()
+				if finalRoot and finalRoot.Anchored then 
+					finalRoot.Anchored = false 
+				end
 			end
 		end
 	})
@@ -4343,7 +4538,7 @@ local function RunMainScript()
 			end
 		})
 		task.wait()
-		local teleportedToRoom25 = false
+		local teleportedToRoom = false
 		Tabs.Castle:AddToggle("AutoFarmCastleToggle", {
 			Title = "Auto Farm Castle",
 			Default = false,
@@ -4372,14 +4567,21 @@ local function RunMainScript()
 							if mainWorld then
 								local room1 = mainWorld:FindFirstChild("Room_1")
 								local firePortal = room1 and room1:FindFirstChild("FirePortal")
-								if firePortal and not teleportedToRoom25 then
+								if firePortal and not teleportedToRoom then
 									local room25 = mainWorld:FindFirstChild("Room_25")
+									local room50 = mainWorld:FindFirstChild("Room_50")
 									if room25 then
 										pcall(function()
 											_G.MoveToEnemy(room25:GetPivot().Position, "Teleport", Options.CastleFarmTweenSpeedSlider.Value, false)
 										end)
 										task.wait()
-										teleportedToRoom25 = true
+										teleportedToRoom = true
+									elseif room50 then
+										pcall(function()
+											_G.MoveToEnemy(room50:GetPivot().Position, "Teleport", Options.CastleFarmTweenSpeedSlider.Value, false)
+										end)
+										task.wait()
+										teleportedToRoom = true
 									end
 								end
 							end
@@ -4503,7 +4705,7 @@ local function RunMainScript()
 									end
 								elseif finalTargetInstance then
 									local targetPosition = finalTargetInstance.Position
-									local needsToMove = finalMinDistance > 5
+									local needsToMove = finalMinDistance > 10
 									if needsToMove then
 										local moveMode = Options.CastleMoveModeDropdown.Value
 										local tweenSpeed = Options.CastleFarmTweenSpeedSlider.Value or 150
@@ -5348,6 +5550,50 @@ local function RunMainScript()
 	end
 	
 	do
+		Tabs.Quests:AddSection("Daily Quests")
+		task.wait()
+		Tabs.Quests:AddToggle("DailyQuestToggle", {
+			Title = "Auto Redeem Daily Quests",
+			Default = false,
+			Callback = function(Value)
+				_G.AriseSettings.Toggles.DailyQuestToggle = Value
+				if Value then
+					spawn(function()
+						while Options.DailyQuestToggle.Value do
+							for _, quest in ipairs(getgenv().dailyQuests) do
+								_G.RedeemDailyQuest(quest)
+								task.wait(1)
+							end
+							task.wait(10)
+						end
+					end)
+				end
+			end
+		})
+	
+		Tabs.Quests:AddSection("Weekly Quests")
+		task.wait()
+		Tabs.Quests:AddToggle("WeeklyQuestToggle", {
+			Title = "Auto Redeem Weekly Quests",
+			Default = false,
+			Callback = function(Value)
+				_G.AriseSettings.Toggles.WeeklyQuestToggle = Value
+				if Value then
+					spawn(function()
+						while Options.WeeklyQuestToggle.Value do
+							for _, quest in ipairs(getgenv().weeklyQuests) do
+								_G.RedeemWeeklyQuest(quest)
+								task.wait(1)
+							end
+							task.wait(10)
+						end
+					end)
+				end
+			end
+		})
+	end
+	
+	do
 		Tabs.Sell:AddSection("Shadow Selling")
 		task.wait()
 		Tabs.Sell:AddDropdown("SellRankDropdown", {
@@ -5597,9 +5843,8 @@ local function RunMainScript()
 									}
 								}
 								game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
-								task.wait(0.1)
 							end
-							task.wait(0.1)
+							task.wait()
 						end
 					end)
 				end
@@ -6066,7 +6311,7 @@ local function RunMainScript()
 		task.wait()
 		Tabs.Infos:AddSection("Support")
 		Tabs.Infos:AddParagraph({
-			Title = "Version 2.1",
+			Title = "Version 2.2",
 			Content = "Buy permanent key on discord!"
 		})
 		task.wait()
