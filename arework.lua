@@ -2188,13 +2188,13 @@ _G.Toggle_AutoFarmCastle = Tab_Castle:CreateToggle({
                                 pcall(function()
                                     _G.MoveToEnemy(room25:GetPivot().Position, "Teleport", Slider_CastleFarmTweenSpeed.CurrentValue, false)
                                 end)
-                                task.wait()
+                                task.wait(2)
                                 teleportedToRoom = true
                             elseif room50 then
                                 pcall(function()
                                     _G.MoveToEnemy(room50:GetPivot().Position, "Teleport", Slider_CastleFarmTweenSpeed.CurrentValue, false)
                                 end)
-                                task.wait()
+                                task.wait(2)
                                 teleportedToRoom = true
                             end
                         end
