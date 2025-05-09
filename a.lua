@@ -4574,13 +4574,13 @@ local function RunMainScript()
 										pcall(function()
 											_G.MoveToEnemy(room25:GetPivot().Position, "Teleport", Options.CastleFarmTweenSpeedSlider.Value, false)
 										end)
-										task.wait()
+										task.wait(2)
 										teleportedToRoom = true
 									elseif room50 then
 										pcall(function()
 											_G.MoveToEnemy(room50:GetPivot().Position, "Teleport", Options.CastleFarmTweenSpeedSlider.Value, false)
 										end)
-										task.wait()
+										task.wait(2)
 										teleportedToRoom = true
 									end
 								end
