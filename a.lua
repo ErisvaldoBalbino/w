@@ -762,8 +762,10 @@ local function RunMainScript()
 		args[1][2] = "\7"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
+		args[1][2] = "\005"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\6"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+		args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 	end
 	
 	_G.ChangeWorld = function(worldName)
@@ -783,6 +785,7 @@ local function RunMainScript()
 		args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\6"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+		args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 		if player.Character and player.Character:FindFirstChild("Humanoid") then
 			player.Character.Humanoid.WalkSpeed = 0
 			player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Dead)
@@ -811,6 +814,7 @@ local function RunMainScript()
 		args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\6"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+		args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 	end
 	
 	local function createDungeon(dungeonId)
@@ -830,6 +834,7 @@ local function RunMainScript()
 		args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\6"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+		args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 	end
 	
 	local function addRune(dungeonId)
@@ -852,6 +857,7 @@ local function RunMainScript()
 		args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\6"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+		args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 	end
 	
 	local function startDungeon(dungeonId)
@@ -872,6 +878,7 @@ local function RunMainScript()
 		args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\6"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+		args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 	end
 	
 	local function resetDungeon()
@@ -892,6 +899,7 @@ local function RunMainScript()
 		args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\6"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+		args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 	end
 	
 	local function resetCastle()
@@ -912,6 +920,7 @@ local function RunMainScript()
 		args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\6"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+		args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 	end
 	
 	local function showPetsRemote()
@@ -931,6 +940,7 @@ local function RunMainScript()
 		args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\6"  dataRemoteEvent:FireServer(unpack(args))
 		args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+		args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 	end
 	
 	_G.IsEnemyAlive = function(enemy)
@@ -2421,7 +2431,7 @@ local function RunMainScript()
 								["Event"] = "DungeonAction",
 								["Action"] = "Create"
 							},
-							[2] = "\11"
+							[2] = "\010"
 						}
 					}
 					if dungeonId then
@@ -2443,7 +2453,7 @@ local function RunMainScript()
 								["Action"] = "Start",
 								["Dungeon"] = dungeonId
 							},
-							[2] = "\11"
+							[2] = "\010"
 						}
 					}
 	
@@ -2495,7 +2505,7 @@ local function RunMainScript()
 					Type = "Daily",
 					Event = "ClaimQuest"
 				},
-				"\011"
+				"\010"
 			}
 		}
 		dataRemoteEvent:FireServer(unpack(args))
@@ -2509,7 +2519,7 @@ local function RunMainScript()
 					Type = "Weekly",
 					Event = "ClaimQuest"
 				},
-				"\011"
+				"\010"
 			}
 		}
 		dataRemoteEvent:FireServer(unpack(args))
@@ -2867,7 +2877,7 @@ local function RunMainScript()
 											["Event"] = "PunchAttack",
 											["Enemy"] = nearestEnemy.Name
 										},
-										[2] = "\005"
+										[2] = "\004"
 									}
 								}
 								game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
@@ -2973,9 +2983,9 @@ local function RunMainScript()
 											local argsToSend = nil
 		
 											if ariseEnemies[readableEnemyName] and ariseTypes[enemySizeTypeStr] then
-												argsToSend = { [1] = { [1] = { ["Event"] = "EnemyCapture", ["Enemy"] = enemyInstanceName }, [2] = "\5" } }
+												argsToSend = { [1] = { [1] = { ["Event"] = "EnemyCapture", ["Enemy"] = enemyInstanceName }, [2] = "\004" } }
 											elseif destroyEnemies[readableEnemyName] and destroyTypes[enemySizeTypeStr] then
-												argsToSend = { [1] = { [1] = { ["Event"] = "EnemyDestroy", ["Enemy"] = enemyInstanceName }, [2] = "\5" } }
+												argsToSend = { [1] = { [1] = { ["Event"] = "EnemyDestroy", ["Enemy"] = enemyInstanceName }, [2] = "\004" } }
 											end
 		
 											if argsToSend then
@@ -3085,7 +3095,7 @@ local function RunMainScript()
 														["Event"] = "EnemyCapture",
 														["Enemy"] = enemyHash
 													},
-													[2] = "\5"
+													[2] = "\004"
 												}
 											}
 											game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent"):FireServer(unpack(ariseArgs))
@@ -3096,7 +3106,7 @@ local function RunMainScript()
 														["Event"] = "EnemyDestroy",
 														["Enemy"] = enemyHash
 													},
-													[2] = "\5"
+													[2] = "\004"
 												}
 											}
 											game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent"):FireServer(unpack(destroyArgs))
@@ -4386,7 +4396,7 @@ local function RunMainScript()
 												["Event"] = "CastleAction",
 												["Action"] = "Join"
 											},
-											[2] = "\11"
+											[2] = "\010"
 											}
 										}))
 										task.wait(5)
@@ -4399,7 +4409,7 @@ local function RunMainScript()
 													["Event"] = "CastleAction",
 													["Action"] = "Join"
 												},
-												[2] = "\11"
+												[2] = "\010"
 											}
 										}))
 										task.wait(5)
@@ -4574,13 +4584,13 @@ local function RunMainScript()
 										pcall(function()
 											_G.MoveToEnemy(room25:GetPivot().Position, "Teleport", Options.CastleFarmTweenSpeedSlider.Value, false)
 										end)
-										task.wait(2)
+										task.wait()
 										teleportedToRoom = true
 									elseif room50 then
 										pcall(function()
 											_G.MoveToEnemy(room50:GetPivot().Position, "Teleport", Options.CastleFarmTweenSpeedSlider.Value, false)
 										end)
-										task.wait(2)
+										task.wait()
 										teleportedToRoom = true
 									end
 								end
@@ -4759,7 +4769,7 @@ local function RunMainScript()
 							["Event"] = "DungeonAction",
 							["Action"] = "TestEnter"
 						},
-						[2] = "\11"
+						[2] = "\010"
 					}
 				}
 				local argsInt = {
@@ -4768,7 +4778,7 @@ local function RunMainScript()
 							["Event"] = "DungeonAction",
 							["Action"] = "TestEnter"
 						},
-						[2] = "\11"
+						[2] = "\010"
 					}
 				}
 				dataRemoteEvent:FireServer(unpack(argsChar))
@@ -5758,7 +5768,7 @@ local function RunMainScript()
 								["Event"] = "DungeonAction",
 								["Action"] = "Create"
 							},
-							[2] = "\11"
+							[2] = "\010"
 						}
 					}
 					if dungeonId then
@@ -5785,7 +5795,7 @@ local function RunMainScript()
 								["Action"] = "Start",
 								["Dungeon"] = dungeonId
 							},
-							[2] = "\11"
+							[2] = "\010"
 						}
 					}
 	
