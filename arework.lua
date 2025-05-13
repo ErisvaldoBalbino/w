@@ -165,9 +165,10 @@ _G.AttackEnemy = function(enemyId)
     args[1][2] = "\t"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\7"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
+    args[1][2] = "\005"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
-    args[1][2] = "\6"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+    args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 end
 
 _G.IsInDungeon = function()
@@ -385,7 +386,7 @@ _G.RedeemDailyQuest = function(quest)
                 Type = "Daily",
                 Event = "ClaimQuest"
             },
-            "\011"
+            "\010"
         }
     }
     dataRemoteEvent:FireServer(unpack(args))
@@ -399,7 +400,7 @@ _G.RedeemWeeklyQuest = function(quest)
                 Type = "Weekly",
                 Event = "ClaimQuest"
             },
-            "\011"
+            "\010"
         }
     }
     dataRemoteEvent:FireServer(unpack(args))
@@ -738,7 +739,7 @@ _G.Toggle_AutoClick = Tab_Main:CreateToggle({
                                         ["Event"] = "PunchAttack",
                                         ["Enemy"] = nearestEnemy.Name
                                     },
-                                    [2] = "\005"
+                                    [2] = "\004"
                                 }
                             }
                             game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
@@ -886,9 +887,9 @@ _G.Toggle_Action = Tab_Main:CreateToggle({
                                 local argsToSend = nil
 
                                 if ariseEnemies[readableEnemyName] and ariseTypes[enemySizeTypeStr] then
-                                    argsToSend = { [1] = { [1] = { ["Event"] = "EnemyCapture", ["Enemy"] = enemyInstanceName }, [2] = "\5" } }
+                                    argsToSend = { [1] = { [1] = { ["Event"] = "EnemyCapture", ["Enemy"] = enemyInstanceName }, [2] = "\004" } }
                                 elseif destroyEnemies[readableEnemyName] and destroyTypes[enemySizeTypeStr] then
-                                    argsToSend = { [1] = { [1] = { ["Event"] = "EnemyDestroy", ["Enemy"] = enemyInstanceName }, [2] = "\5" } }
+                                    argsToSend = { [1] = { [1] = { ["Event"] = "EnemyDestroy", ["Enemy"] = enemyInstanceName }, [2] = "\004" } }
                                 end
 
                                 if argsToSend then
@@ -1013,7 +1014,7 @@ _G.Toggle_SimpleAction = Tab_Main:CreateToggle({
                                             ["Event"] = "EnemyCapture",
                                             ["Enemy"] = enemyHash
                                         },
-                                        [2] = "\5"
+                                        [2] = "\004"
                                     }
                                 }
                                 game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent"):FireServer(unpack(ariseArgs))
@@ -1024,7 +1025,7 @@ _G.Toggle_SimpleAction = Tab_Main:CreateToggle({
                                             ["Event"] = "EnemyDestroy",
                                             ["Enemy"] = enemyHash
                                         },
-                                        [2] = "\5"
+                                        [2] = "\004"
                                     }
                                 }
                                 game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent"):FireServer(unpack(destroyArgs))
@@ -1097,6 +1098,7 @@ local function createDungeon(dungeonId)
     args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+    args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 end
 
 local function addRune(dungeonId)
@@ -1120,6 +1122,7 @@ local function addRune(dungeonId)
     args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+    args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 end
 
 local function startDungeon(dungeonId)
@@ -1139,6 +1142,7 @@ local function startDungeon(dungeonId)
     args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+    args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 end
 
 local dungeonRankMap = {
@@ -1464,6 +1468,7 @@ local function resetDungeon()
     args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+    args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 end
 
 local Toggle_AutoResetDungeon = Tab_Dungeon:CreateToggle({
@@ -1610,7 +1615,7 @@ _G.HandleDungeonEnd = function()
                             ["Event"] = "DungeonAction",
                             ["Action"] = "Create"
                         },
-                        [2] = "\11"
+                        [2] = "\010"
                     }
                 }
                 if dungeonId then
@@ -1632,7 +1637,7 @@ _G.HandleDungeonEnd = function()
                             ["Action"] = "Start",
                             ["Dungeon"] = dungeonId
                         },
-                        [2] = "\11"
+                        [2] = "\010"
                     }
                 }
 
@@ -1811,7 +1816,7 @@ _G.Toggle_AutoFarmDungeon = Tab_Dungeon:CreateToggle({
                                 ["Event"] = "DungeonAction",
                                 ["Action"] = "Create"
                             },
-                            [2] = "\11"
+                            [2] = "\010"
                         }
                     }
                     if dungeonId then
@@ -1838,7 +1843,7 @@ _G.Toggle_AutoFarmDungeon = Tab_Dungeon:CreateToggle({
                                     ["Action"] = "Start",
                                     ["Dungeon"] = dungeonId
                                 },
-                                [2] = "\11"
+                                [2] = "\010"
                             }
                         }
         
@@ -1916,7 +1921,7 @@ _G.Toggle_AutoCastle = Tab_Castle:CreateToggle({
                                             ["Event"] = "CastleAction",
                                             ["Action"] = "Join"
                                         },
-                                        [2] = "\11"
+                                        [2] = "\010"
                                     }
                                 }
                                 dataRemoteEvent:FireServer(unpack(args))
@@ -1929,7 +1934,7 @@ _G.Toggle_AutoCastle = Tab_Castle:CreateToggle({
                                             ["Event"] = "CastleAction",
                                             ["Action"] = "Join"
                                         },
-                                        [2] = "\11"
+                                        [2] = "\010"
                                     }
                                 }
                                 dataRemoteEvent:FireServer(unpack(args))
@@ -2014,6 +2019,7 @@ local function resetCastle()
     args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+    args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
 end
 
 local Toggle_AutoResetCastle = Tab_Castle:CreateToggle({
@@ -2267,12 +2273,41 @@ _G.Toggle_AutoFarmCastle = Tab_Castle:CreateToggle({
                                 performedFloorAction = true
                                 break
                             elseif action == "Leave After Boss" and isOnTargetFloor then
-                                if targetFloorNum > 0 and targetFloorNum % 5 == 0 then
-                                    if not hasAliveBoss then
-                                        Rayfield:Notify({ Title = "Auto Farm Castle", Content = "Boss on floor " .. targetFloorStr .. " defeated. Leaving Castle.", Duration = 5, Image="log-out" })
+                                if targetFloorNum > 0 and targetFloorNum % 5 == 0 then -- It's a designated boss floor
+                                    local bossIsActuallyAlive = hasAliveBoss -- From the comprehensive scan earlier in the loop
+                            
+                                    if not bossIsActuallyAlive then
+                                        task.wait(2)
+                            
+                                        local tempBossFoundOnRescan = false
+                                        if serverFolder and playerRoot then -- Ensure necessary variables are valid
+                                            for _, enemySource in ipairs(serverFolder:GetChildren()) do
+                                                local enemiesToScan = {}
+                                                if enemySource:IsA("Folder") or enemySource:IsA("Model") then
+                                                    enemiesToScan = enemySource:GetChildren()
+                                                elseif enemySource:IsA("BasePart") then
+                                                    enemiesToScan = {enemySource}
+                                                end
+                                                for _, enemyInst in ipairs(enemiesToScan) do
+                                                    if enemyInst and enemyInst:IsA("BasePart") and not enemyInst:GetAttribute("Dead") then
+                                                        local scale = enemyInst:GetAttribute("Scale")
+                                                        if type(scale) == "number" and scale >= 2 then -- Boss criteria
+                                                            tempBossFoundOnRescan = true
+                                                            break
+                                                        end
+                                                    end
+                                                end
+                                            end
+                                            if tempBossFoundOnRescan then break end
+                                        end
+                                        bossIsActuallyAlive = tempBossFoundOnRescan -- Update based on the re-scan
+                                    end
+                                    if not bossIsActuallyAlive then -- If still no boss after re-scan, or boss was defeated
+                                        Rayfield:Notify({ Title = "Auto Farm Castle", Content = "Boss on floor " .. targetFloorStr .. " defeated or not found. Leaving Castle.", Duration = 5, Image="log-out" })
                                         pcall(_G.leaveCastle)
                                         task.wait(5)
                                         performedFloorAction = true
+                                        _G.Toggle_AutoFarmCastle.CurrentValue = false 
                                         break
                                     end
                                 end
@@ -2335,7 +2370,7 @@ _G.Toggle_AutoFarmCastle = Tab_Castle:CreateToggle({
 
                 local playerRootOnExit = getPlayerRoot()
                 if playerRootOnExit and playerRootOnExit.Anchored then playerRootOnExit.Anchored = false end
-                teleportedToRoom25 = false
+                teleportedToRoom = false
 
             end)
         else
@@ -2656,10 +2691,10 @@ _G.Toggle_AutoWinter = Tab_Winter:CreateToggle({
                     end
 
                     local minutes, seconds = currentTime.min, currentTime.sec
-                    local targetMinute, targetHour = 10, currentTime.hour
+                    local targetMinute, targetHour = 30, currentTime.hour -- Changed 10 to 30
                     local waitSeconds = 0
                     
-                    if minutes < 10 then
+                    if minutes < 30 then -- Changed 10 to 30
                         waitSeconds = (targetMinute - minutes - 1) * 60 + (60 - seconds)
                     else
                         targetHour = (targetHour + 1) % 24
@@ -2675,7 +2710,7 @@ _G.Toggle_AutoWinter = Tab_Winter:CreateToggle({
                     local waitEndTime = tick() + waitSeconds
                     while tick() < waitEndTime and _G.Toggle_AutoWinter.CurrentValue do
                         local now = os.date("*t")
-                        if (now.min >= 10 and now.min < 25) then break end
+                        if (now.min >= 30 and now.min < 45) then break end -- Changed 10 and 25 to 30 and 45
                         task.wait(1)
                     end
                     
@@ -2701,17 +2736,17 @@ _G.Toggle_AutoWinter = Tab_Winter:CreateToggle({
 
                     -- Calculate wait time until window ends
                     local minutes, seconds = currentTime.min, currentTime.sec
-                    local waitSeconds = (25 - minutes - 1) * 60 + (60 - seconds)
+                    local waitSeconds = (45 - minutes - 1) * 60 + (60 - seconds) -- Changed 25 to 45
                     waitSeconds = math.max(1, waitSeconds)
                     
                     notify("Auto Winter", 
-                          "Waiting " .. math.ceil(waitSeconds) .. "s until event window ends (xx:25).", 5, "timer")
+                          "Waiting " .. math.ceil(waitSeconds) .. "s until event window ends (xx:45).", 5, "timer") -- Changed xx:25 to xx:45
 
                     -- Wait until window ends
                     local waitEndTime = tick() + waitSeconds
                     while tick() < waitEndTime and _G.Toggle_AutoWinter.CurrentValue do
                         local now = os.date("*t")
-                        if not (now.min >= 10 and now.min < 25) then break end
+                        if not (now.min >= 30 and now.min < 45) then break end -- Changed 10 and 25 to 30 and 45
                         task.wait(1)
                     end
                     
@@ -2978,13 +3013,13 @@ _G.Toggle_AutoWinter = Tab_Winter:CreateToggle({
                         -- Calculate wait until window end
                         local currentTime = os.date("*t")
                         local minutes, seconds = currentTime.min, currentTime.sec
-                        local waitSeconds = (25 - minutes - 1) * 60 + (60 - seconds)
+                        local waitSeconds = (45 - minutes - 1) * 60 + (60 - seconds) -- Changed 25 to 45
                         waitSeconds = math.max(1, waitSeconds)
                         
                         local waitEndTime = tick() + waitSeconds
                         while tick() < waitEndTime and _G.Toggle_AutoWinter.CurrentValue do
                             local now = os.date("*t")
-                            if not (now.min >= 10 and now.min < 25) then break end
+                            if not (now.min >= 30 and now.min < 45) then break end -- Changed 10 and 25 to 30 and 45
                             task.wait(1)
                         end
                     end
@@ -3048,11 +3083,11 @@ _G.Toggle_AutoWinter = Tab_Winter:CreateToggle({
                     
                     local currentTime = os.date("*t")
                     local minutes, seconds = currentTime.min, currentTime.sec
-                    local isEventWindow = (minutes >= 10 and minutes < 25)
+                    local isEventWindow = (minutes >= 30 and minutes < 45) -- Changed 10 and 25 to 30 and 45
                     
                     -- Reset state on new window
                     if isEventWindow and not state.inEventWindow then
-                        --notify("Auto Winter", "Event window (10-25) started. Status reset.", 4, "info")
+                        --notify("Auto Winter", "Event window (30-45) started. Status reset.", 4, "info") -- Changed 10-25 to 30-45
                         state.bosses.snowMonarchKilled = false
                         state.bosses.larudaKilled = false
                         state.monarchWaitAttempted = false
@@ -3124,7 +3159,7 @@ _G.Toggle_AutoWinter = Tab_Winter:CreateToggle({
                     end
                     
                     -- Calculate event timing info
-                    local windowStartMinute = 10
+                    local windowStartMinute = 30 -- Changed 10 to 30
                     local secondsSinceWindowStart = (minutes - windowStartMinute) * 60 + seconds
                     local minutesIntoEvent = secondsSinceWindowStart / 60
                     
@@ -3216,6 +3251,7 @@ _G.ChangeWorld = function(worldName)
     args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\5"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\11"  dataRemoteEvent:FireServer(unpack(args))
+    args[1][2] = "\010"  dataRemoteEvent:FireServer(unpack(args))
     if player.Character and player.Character:FindFirstChild("Humanoid") then
         player.Character.Humanoid.WalkSpeed = 0
         player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Dead)
@@ -3385,7 +3421,7 @@ _G.Toggle_RedeemDailyQuest = Tab_Misc:CreateToggle({
         if Value then
             for _, quest in ipairs(getgenv().dailyQuests) do
                 _G.RedeemDailyQuest(quest)
-                task.wait(10)
+                task.wait(0.1)
             end
         end
     end
@@ -3399,7 +3435,7 @@ _G.Toggle_RedeemWeeklyQuest = Tab_Misc:CreateToggle({
         if Value then
             for _, quest in ipairs(getgenv().weeklyQuests) do
                 _G.RedeemWeeklyQuest(quest)
-                task.wait(10)
+                task.wait(0.1)
             end
         end
     end
