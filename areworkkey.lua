@@ -1806,7 +1806,8 @@ local function RunMainScript()
 		"DgJojoRune",
 		"DgDbRune",
 		"DgOPMRune",
-		"DgDanRune"
+		"DgDanRune",
+		"DgDoubleDungeonRune"
 	}
 	
 	_G.Dropdown_DungeonRune = Tab_Dungeon:CreateDropdown({
