@@ -480,7 +480,7 @@ local function RunMainScript()
 		['Winter Bear'] = {'WBear'}
 	}
 	
-	getgenv().dailyQuests = {
+	local dailyQuests = {
 		"DailyTime",
 		"DailyEnemy",
 		"DailyDungeon",
@@ -488,7 +488,7 @@ local function RunMainScript()
 		"DailyArise",
 	}
 	
-	getgenv().weeklyQuests = {
+	local weeklyQuests = {
 		"WeeklyArise",
 		"WeeklyBrute",
 		"WeeklyDungeon",
@@ -2085,14 +2085,17 @@ local function RunMainScript()
 				spawn(function()
 					local isPotentiallyEnding = false
 					local endCheckStartTime = 0
+					local hasConfirmedEntry = false
 	
-					while _G.Toggle_AutoFarmDungeon.CurrentValue do
+					if _G.IsInDungeon() then
+						hasConfirmedEntry = true
+					else
+						return
+					end
+	
+					while _G.Toggle_AutoFarmDungeon.CurrentValue and hasConfirmedEntry do
 						if _G.IsInCastle() then
 							break
-						end
-	
-						if not _G.IsInDungeon() then
-							 break
 						end
 	
 						local playerRoot = getPlayerRoot()
@@ -2164,17 +2167,20 @@ local function RunMainScript()
 	
 							if tick() - endCheckStartTime >= 3.5 then
 								 if not AreEnemiesAlive() then
-									 Rayfield:Notify({ Title = "Dungeon Farm", Content = "Dungeon ended. Rejoining...", Duration = 3, Image="arrow-right-circle" })
+									 --Rayfield:Notify({ Title = "Dungeon Farm", Content = "Dungeon ended. Handling end...", Duration = 3, Image="arrow-right-circle" })
 									 _G.HandleDungeonEnd()
+									 if not _G.IsInDungeon() then
+										 hasConfirmedEntry = false 
+									 end
 									 break
 								 else
-									 Rayfield:Notify({ Title = "Double Dungeon", Content = "Continuing farm...", Duration = 3, Image="check-circle" })
+									 --Rayfield:Notify({ Title = "Double Dungeon", Content = "Continuing farm...", Duration = 3, Image="check-circle" })
 									 isPotentiallyEnding = false
 								 end
 							end
 						end
 	
-						local delay = Slider_DungeonFarmDelay and Slider_DungeonFarmDelay.CurrentValue or 0.1
+						local delay = Slider_DungeonFarmDelay.CurrentValue or 0.1
 						task.wait(delay)
 					end
 	
@@ -2352,12 +2358,17 @@ local function RunMainScript()
 								Image = "timer"
 							})
 	
-							if _G.ActivityPriority == "None" then _G.ActivityPriority = "Farming" end
+							if _G.Toggle_AutoFarm.CurrentValue then
+								_G.ActivityPriority = "Farming"
+							else
+								_G.ActivityPriority = "None"
+							end
+	
 							if _G.SavedFarmPosition then
 								local currentCheckWorld = getCurrentWorld()
 								local targetWorld = _G.FindNearestWorld(_G.SavedFarmPosition)
 								if currentCheckWorld ~= targetWorld then
-									pcall(_G.TeleportTo, _G.SavedFarmPosition)
+									_G.TeleportTo(_G.SavedFarmPosition)
 									task.wait(0.5)
 									local currentRoot = getPlayerRoot()
 									if currentRoot then currentRoot.Anchored = false end
@@ -2571,26 +2582,27 @@ local function RunMainScript()
 						local action = Dropdown_ActionOnFloor.CurrentOption[1]
 						local targetFloorNum = tonumber(targetFloorStr)
 	
-						local mainWorld = workspace:FindFirstChild("__Main") and workspace.__Main:FindFirstChild("__World")
-						if mainWorld then
-							local room1 = mainWorld:FindFirstChild("Room_1")
-							local firePortal = room1 and room1:FindFirstChild("FirePortal")
-							if firePortal and not teleportedToRoom then
-								local room25 = mainWorld:FindFirstChild("Room_25")
-								local room50 = mainWorld:FindFirstChild("Room_50")
-								if room25 then
-									pcall(function()
-										_G.MoveToEnemy(room25:GetPivot().Position, "Teleport", Slider_CastleFarmTweenSpeed.CurrentValue, false)
-									end)
-									task.wait(2)
-									teleportedToRoom = true
-								elseif room50 then
-									pcall(function()
-										_G.MoveToEnemy(room50:GetPivot().Position, "Teleport", Slider_CastleFarmTweenSpeed.CurrentValue, false)
-									end)
-									task.wait(2)
-									teleportedToRoom = true
-								end
+						local mainWorld = workspace.__Main.__World
+						local room1 = mainWorld:FindFirstChild("Room_1")
+						local firePortal = room1:FindFirstChild("FirePortal")
+						if firePortal and not teleportedToRoom then
+							task.wait(0.1)
+							local room25 = mainWorld:FindFirstChild("Room_25")
+							local room50 = mainWorld:FindFirstChild("Room_50")
+							if room25 then
+								pcall(function()
+									_G.MoveToEnemy(room25:GetPivot().Position, "Teleport", Slider_CastleFarmTweenSpeed.CurrentValue, false)
+								end)
+								task.wait()
+								teleportedToRoom = true
+								continue
+							elseif room50 then
+								pcall(function()
+									_G.MoveToEnemy(room50:GetPivot().Position, "Teleport", Slider_CastleFarmTweenSpeed.CurrentValue, false)
+								end)
+								task.wait()
+								teleportedToRoom = true
+								continue
 							end
 						end
 	
@@ -2661,14 +2673,14 @@ local function RunMainScript()
 									performedFloorAction = true
 									break
 								elseif action == "Leave After Boss" and isOnTargetFloor then
-									if targetFloorNum > 0 and targetFloorNum % 5 == 0 then -- It's a designated boss floor
-										local bossIsActuallyAlive = hasAliveBoss -- From the comprehensive scan earlier in the loop
+									if targetFloorNum > 0 and targetFloorNum % 5 == 0 then
+										local bossIsActuallyAlive = hasAliveBoss
 								
 										if not bossIsActuallyAlive then
 											task.wait(2)
 								
 											local tempBossFoundOnRescan = false
-											if serverFolder and playerRoot then -- Ensure necessary variables are valid
+											if serverFolder and playerRoot then
 												for _, enemySource in ipairs(serverFolder:GetChildren()) do
 													local enemiesToScan = {}
 													if enemySource:IsA("Folder") or enemySource:IsA("Model") then
@@ -2679,7 +2691,7 @@ local function RunMainScript()
 													for _, enemyInst in ipairs(enemiesToScan) do
 														if enemyInst and enemyInst:IsA("BasePart") and not enemyInst:GetAttribute("Dead") then
 															local scale = enemyInst:GetAttribute("Scale")
-															if type(scale) == "number" and scale >= 2 then -- Boss criteria
+															if type(scale) == "number" and scale >= 2 then
 																tempBossFoundOnRescan = true
 																break
 															end
@@ -2688,14 +2700,13 @@ local function RunMainScript()
 												end
 												if tempBossFoundOnRescan then break end
 											end
-											bossIsActuallyAlive = tempBossFoundOnRescan -- Update based on the re-scan
+											bossIsActuallyAlive = tempBossFoundOnRescan
 										end
-										if not bossIsActuallyAlive then -- If still no boss after re-scan, or boss was defeated
+										if not bossIsActuallyAlive then
 											Rayfield:Notify({ Title = "Auto Farm Castle", Content = "Boss on floor " .. targetFloorStr .. " defeated or not found. Leaving Castle.", Duration = 5, Image="log-out" })
 											pcall(_G.leaveCastle)
 											task.wait(5)
 											performedFloorAction = true
-											_G.Toggle_AutoFarmCastle.CurrentValue = false 
 											break
 										end
 									end
@@ -3068,7 +3079,11 @@ local function RunMainScript()
 						if _G.ActivityPriority == "Winter" then
 							--notify("Auto Winter", "Event window ended.", 4, "info")
 							
-							_G.ActivityPriority = _G.Toggle_AutoFarm.CurrentValue and "Farming" or "None"
+							if _G.Toggle_AutoFarm.CurrentValue then
+								_G.ActivityPriority = "Farming"
+							else
+								_G.ActivityPriority = "None"
+							end
 							
 							if _G.SavedFarmPosition then
 								_G.TeleportTo(_G.SavedFarmPosition)
@@ -3109,7 +3124,11 @@ local function RunMainScript()
 					local function handleCompletedCycle(playerRoot, currentTime)
 						notify("Auto Winter", "Event cycle completed this window. Waiting.", 5, "info")
 						
-						_G.ActivityPriority = _G.Toggle_AutoFarm.CurrentValue and "Farming" or "None"
+						if _G.Toggle_AutoFarm.CurrentValue then
+							_G.ActivityPriority = "Farming"
+						else
+							_G.ActivityPriority = "None"
+						end
 						
 						if _G.SavedFarmPosition then
 							local distanceToSaved = playerRoot and 
@@ -3807,9 +3826,12 @@ local function RunMainScript()
 		Flag = "RedeemDailyQuestToggle",
 		Callback = function(Value)
 			if Value then
-				for _, quest in ipairs(getgenv().dailyQuests) do
-					_G.RedeemDailyQuest(quest)
-					task.wait(0.1)
+				while _G.Toggle_RedeemDailyQuest.CurrentValue do
+					for _, quest in ipairs(dailyQuests) do
+						_G.RedeemDailyQuest(quest)
+						task.wait(1)
+					end
+					task.wait(15)
 				end
 			end
 		end
@@ -3821,9 +3843,12 @@ local function RunMainScript()
 		Flag = "RedeemWeeklyQuestToggle",
 		Callback = function(Value)
 			if Value then
-				for _, quest in ipairs(getgenv().weeklyQuests) do
-					_G.RedeemWeeklyQuest(quest)
-					task.wait(0.1)
+				while _G.Toggle_RedeemWeeklyQuest.CurrentValue do
+					for _, quest in ipairs(weeklyQuests) do
+						_G.RedeemWeeklyQuest(quest)
+						task.wait(1)
+					end
+					task.wait(15)
 				end
 			end
 		end
