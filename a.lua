@@ -6387,7 +6387,7 @@ local function RunMainScript()
         task.wait()
         Tabs.Infos:AddSection("Support")
         Tabs.Infos:AddParagraph({
-            Title = "Version 2.2",
+            Title = "Version 2.2.1",
             Content = "Buy permanent key on discord!"
         })
         task.wait()
