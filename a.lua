@@ -488,7 +488,8 @@ local function RunMainScript()
     local function getPlayerRoot()
         return player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     end
-    getgenv().worldList = {"SoloWorld", "NarutoWorld", "OPWorld", "BleachWorld", "BCWorld", "ChainsawWorld", "JojoWorld", "DBWorld", "OPMWorld", "DanWorld"}
+    
+    getgenv().worldList = {"SoloWorld", "NarutoWorld", "OPWorld", "BleachWorld", "BCWorld", "ChainsawWorld", "JojoWorld", "DBWorld", "OPMWorld", "DanWorld", "Solo2World"}
     getgenv().enemyList = {
         SoloWorld = {"Soondoo", "Gonshee", "Daek", "Longln", "Anders", "Largalgan"},
         NarutoWorld = {"Snake Man", "Blossom", "Black Crow"},
@@ -499,14 +500,15 @@ local function RunMainScript()
         JojoWorld = {"Diablo", "Gosuke", "Golyne"},
         DBWorld = {"Turtle", "Green", "Sky"},
         OPMWorld = {"Rider", "Cyborg", "Hurricane"},
-        DanWorld = {"Shrimp", "Baira", "Lomo"}
+        DanWorld = {"Shrimp", "Baira", "Lomo"},
+        Solo2World = {"Wuiri", "Gernnat", "Chris"}
     }
     
     getgenv().worldMap = {
         ["SoloWorld"] = "1", ["NarutoWorld"] = "2", ["OPWorld"] = "3",
         ["BleachWorld"] = "4", ["BCWorld"] = "5", ["ChainsawWorld"] = "6",
         ["JojoWorld"] = "7", ["DBWorld"] = "8", ["OPMWorld"] = "9",
-        ["DanWorld"] = "10"
+        ["DanWorld"] = "10", ["Solo2World"] = "11"
     }
     
     getgenv().enemyIdMap = {
@@ -522,11 +524,13 @@ local function RunMainScript()
         ['DB1'] = 'Kame', ['DB2'] = 'Piccolo', ['DB3'] = 'Cell', ['DBB1'] = 'Kame', ['DBB2'] = 'Piccolo', ['DBB3'] = 'Cell',
         ['OPM1'] = 'Mumem', ['OPM2'] = 'Genos', ['OPM3'] = 'Tornado', ['OPMB1'] = 'Mumem', ['OPMB2'] = 'Genos', ['OPMB3'] = 'Tornado',  
         ['DAM1'] = 'Mantis', ['DAM2'] = 'Aira', ['DAM3'] = 'Momo', ['DAMB1'] = 'Mantis', ['DAMB2'] = 'Aira', ['DAMB3'] = 'Momo',
+        ['NSL1'] = 'Wuiri', ['NSL2'] = 'Gernnat', ['NSL3'] = 'Chris', ['NSLB1'] = 'Wuiri', ['NSLB2'] = 'Gernnat', ['NSLB3'] = 'Chris',
         ['WElf1'] = 'Elf Soldier', ['WElf2'] = 'High Frost', ['WBoss'] = 'Laruda', ['WBoss2'] = 'Snow Monarch', ['WIron'] = 'Metal', ['WBear'] = 'Winter Bear',
         -- Bosses
         ['JJ4'] = 'Ant King', ['JinWoo'] = 'Monarch', ['Pain'] = 'Dor', ['Mihalk'] = 'Mifalcon', 
         ['Ulquiorra'] = 'Murcielago', ['Julius'] = 'Time King', ['Denji'] = 'Chainsaw', ['Pucci'] = 'Gucci', ['Igris'] = 'Vermillion',
-        ['Freeza'] = 'Frioo', ['Esil'] = 'Wesil', ['Vulcan'] = 'Magma', ['Metus'] = 'Litch', ['Baran'] = 'White Flame', ['Saitama'] = 'Paitama', ['Okarun'] = 'Tuturum'
+        ['Freeza'] = 'Frioo', ['Esil'] = 'Wesil', ['Vulcan'] = 'Magma', ['Metus'] = 'Litch', ['Baran'] = 'White Flame', ['Saitama'] = 'Paitama', ['Okarun'] = 'Tuturum',
+        ['Chae'] = 'Dae In'
     }
     
     getgenv().pets = {
@@ -585,7 +589,11 @@ local function RunMainScript()
         "Mantis",
         "Aira",
         "Momo",
-        "Okarun"
+        "Okarun",
+        "Yuri",
+        "Lennart",
+        "Christopher",
+        "Chae"
     }
     
     local dailyQuests = {
@@ -642,6 +650,7 @@ local function RunMainScript()
         "DgDbRune",
         "DgOPMRune",
         "DgDanRune",
+        "DgSolo2Rune",
         "DgDoubleDungeonRune"
     }
     
@@ -1107,7 +1116,8 @@ local function RunMainScript()
         JojoWorld = CFrame.new(4816.31640625, 27.442340850830078, -120.22998046875),
         DBWorld = CFrame.new(-6929.5224609375, 124.94865417480469, -76.53571319580078),
         OPMWorld = CFrame.new(6044.72998046875, 25.593618392944336, 4889.79345703125),
-        DanWorld = CFrame.new(-4390.06689453125, 21.47457504272461, 5974.93017578125)
+        DanWorld = CFrame.new(-4390.06689453125, 21.47457504272461, 5974.93017578125),
+        Solo2World = CFrame.new(5739.34228515625, 25.551280975341797, -6356.45751953125)
     }
     
     getgenv().guildPositions = {
@@ -1698,14 +1708,13 @@ local function RunMainScript()
         end
     end
     
-    local potionTypes = {"CoinsPotion", "DropsPotion", "ExpPotion", "GemsPotion", "ShadowPotion", "WeaponPotion"}
+    local potionTypes = {"CoinsPotion", "DropsPotion", "ExpPotion", "GemsPotion", "ShadowPotion"}
     local boostGuiMap = {
         CoinsPotion = "Coins",
         DropsPotion = "Drops",
         ExpPotion = "Exp",
         GemsPotion = "Gems",
-        ShadowPotion = "Shadow",
-        WeaponPotion = "Weapon"
+        ShadowPotion = "Shadow"
     }
     
     local HttpService = game:GetService("HttpService")
@@ -2101,7 +2110,8 @@ local function RunMainScript()
         WeaponShop7 = "JojoWorld",
         WeaponShop8 = "DBWorld",
         WeaponShop9 = "OPMWorld",
-        WeaponShop10 = "DanWorld"
+        WeaponShop10 = "DanWorld",
+        WeaponShop11 = "Solo2World"
     }
     
     local shop1Items = {
@@ -2194,6 +2204,15 @@ local function RunMainScript()
         DivineHammer2 = {Price = 42250000000000000000, Shop = "WeaponShop10"},
     }
     
+    local shop11Items = {
+        CrossSword2 = {Price = 8872500000000001, Shop = "WeaponShop11"},
+        DualDivineBattleAxe2 = {Price = 19012500000000000, Shop = "WeaponShop11"},
+        EyeSword2 = {Price = 38025000000000000, Shop = "WeaponShop11"},
+        FaithSword2 = {Price = 76050000000000000, Shop = "WeaponShop11"},
+        DualKrakenSword2 = {Price = 152100000000000000, Shop = "WeaponShop11"},
+        ArchamageStaff2 = {Price = 304200000000000000, Shop = "WeaponShop11"},
+    }
+    
     local allShopItems = {}
     for name, data in pairs(shop1Items) do
         allShopItems[name] = data
@@ -2223,6 +2242,9 @@ local function RunMainScript()
         allShopItems[name] = data
     end
     for name, data in pairs(shop10Items) do
+        allShopItems[name] = data
+    end
+    for name, data in pairs(shop11Items) do
         allShopItems[name] = data
     end
     
@@ -2319,7 +2341,7 @@ local function RunMainScript()
         game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent"):FireServer(unpack(args))
     end
     
-    local potionShopTypes = {"CoinsBoost", "DropsBoost", "ExpBoost", "GemsBoost", "ShadowBoost", "WeaponBoost"}
+    local potionShopTypes = {"CoinsBoost", "DropsBoost", "ExpBoost", "GemsBoost", "ShadowBoost"}
     
     _G.findLeaveButtonRegion = function()
         local topbar = PlayerGui:FindFirstChild("TopbarStandard")
@@ -5572,6 +5594,10 @@ local function RunMainScript()
             Title = "Dan Dan Dan Dan Dan Dan Dan Dan Dan",
             Callback = function() teleportToWorld("DanWorld") end
         })
+        Tabs.Teleport:AddButton({
+            Title = "Solo2",
+            Callback = function() teleportToWorld("Solo2World") end
+        })
         task.wait()
         Tabs.Teleport:AddSection("Guild Teleport")
         task.wait()
@@ -6198,7 +6224,7 @@ local function RunMainScript()
                                                         ["SubType"] = "Products",
                                                         ["Event"] = "TicketShop"
                                                     },
-                                                    [2] = "\010"
+                                                    [2] = "\n"
                                                 }
                                             }
                                             pcall(function()
@@ -6233,7 +6259,7 @@ local function RunMainScript()
                                         ["SubType"] = "Products",
                                         ["Event"] = "TicketShop"
                                     },
-                                    [2] = "\010"
+                                    [2] = "\n"
                                 }
                             }
                             local success, err = pcall(function()
@@ -6431,7 +6457,7 @@ local function RunMainScript()
                                                             ["Event"] = "UseItem",
                                                             ["Name"] = potionName
                                                         },
-                                                        [2] = "\010"
+                                                        [2] = "\n"
                                                     }
                                                 }
                                                 local success_fire, err_fire = pcall(function()
