@@ -2274,7 +2274,7 @@ local function RunMainScript()
 	
 	_G.Dropdown_CastleCheckpoint = Tab_Castle:CreateDropdown({
 		Name = "Choose Checkpoint",
-		Options = {"None", "25", "50", "75", "100"},
+		Options = {"None", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"},
 		MultipleOptions = false,
 		CurrentOption = {"None"},
 		Flag = "CastleCheckpointDropdown",
