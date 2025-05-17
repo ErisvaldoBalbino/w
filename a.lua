@@ -4388,7 +4388,7 @@ local function RunMainScript()
         Tabs.Castle:AddSection("Castle Options")
         Tabs.Castle:AddDropdown("CastleCheckpointDropdown",{
             Title = "Choose Checkpoint",
-            Values = {"None", "25", "50", "75", "100"},
+            Values = {"None", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100"},
             Multi = false,
             Default = "None"
         })
