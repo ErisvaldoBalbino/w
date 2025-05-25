@@ -1096,7 +1096,7 @@ local function createDungeon(dungeonId)
             [2] = ""
         }
     }
-    args[1][2] = "\n"  dataRemoteEvent:FireServer(unpack(args))
+    args[1][2] = "\v"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\t"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\7"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
@@ -1120,7 +1120,7 @@ local function addRune(dungeonId)
             [2] = ""
         }
     }
-    args[1][2] = "\n"  dataRemoteEvent:FireServer(unpack(args))
+    args[1][2] = "\v"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\t"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\7"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
@@ -1140,7 +1140,7 @@ local function startDungeon(dungeonId)
         }
     }
 
-    args[1][2] = "\n"  dataRemoteEvent:FireServer(unpack(args))
+    args[1][2] = "\v"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\t"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\7"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
@@ -1468,7 +1468,7 @@ local function resetDungeon()
             [2] = ""
         }
     }
-    args[1][2] = "\n"  dataRemoteEvent:FireServer(unpack(args))
+    args[1][2] = "\v"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\t"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\7"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
@@ -1621,7 +1621,7 @@ _G.HandleDungeonEnd = function()
                             ["Event"] = "DungeonAction",
                             ["Action"] = "Create"
                         },
-                        [2] = "\010"
+                        [2] = "\v"
                     }
                 }
                 if dungeonId then
@@ -1643,7 +1643,7 @@ _G.HandleDungeonEnd = function()
                             ["Action"] = "Start",
                             ["Dungeon"] = dungeonId
                         },
-                        [2] = "\010"
+                        [2] = "\v"
                     }
                 }
 
@@ -1828,7 +1828,7 @@ _G.Toggle_AutoFarmDungeon = Tab_Dungeon:CreateToggle({
                                 ["Event"] = "DungeonAction",
                                 ["Action"] = "Create"
                             },
-                            [2] = "\010"
+                            [2] = "\v"
                         }
                     }
                     if dungeonId then
@@ -1855,7 +1855,7 @@ _G.Toggle_AutoFarmDungeon = Tab_Dungeon:CreateToggle({
                                     ["Action"] = "Start",
                                     ["Dungeon"] = dungeonId
                                 },
-                                [2] = "\010"
+                                [2] = "\v"
                             }
                         }
         
@@ -1933,7 +1933,7 @@ _G.Toggle_AutoCastle = Tab_Castle:CreateToggle({
                                             ["Event"] = "CastleAction",
                                             ["Action"] = "Join"
                                         },
-                                        [2] = "\010"
+                                        [2] = "\v"
                                     }
                                 }
                                 dataRemoteEvent:FireServer(unpack(args))
@@ -1946,7 +1946,7 @@ _G.Toggle_AutoCastle = Tab_Castle:CreateToggle({
                                             ["Event"] = "CastleAction",
                                             ["Action"] = "Join"
                                         },
-                                        [2] = "\010"
+                                        [2] = "\v"
                                     }
                                 }
                                 dataRemoteEvent:FireServer(unpack(args))
@@ -2030,7 +2030,7 @@ local function resetCastle()
             [2] = ""
         }
     }
-    args[1][2] = "\n"  dataRemoteEvent:FireServer(unpack(args))
+    args[1][2] = "\v"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\t"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\7"  dataRemoteEvent:FireServer(unpack(args))
     args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
