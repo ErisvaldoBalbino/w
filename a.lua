@@ -837,7 +837,7 @@ local function RunMainScript()
                 [2] = ""
             }
         }
-        args[1][2] = "\n"  dataRemoteEvent:FireServer(unpack(args))
+        args[1][2] = "\v"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\t"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\7"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
@@ -860,7 +860,7 @@ local function RunMainScript()
                 [2] = ""
             }
         }
-        args[1][2] = "\n"  dataRemoteEvent:FireServer(unpack(args))
+        args[1][2] = "\v"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\t"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\7"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
@@ -881,7 +881,7 @@ local function RunMainScript()
             }
         }
     
-        args[1][2] = "\n"  dataRemoteEvent:FireServer(unpack(args))
+        args[1][2] = "\v"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\t"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\7"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
@@ -902,7 +902,7 @@ local function RunMainScript()
                 [2] = ""
             }
         }
-        args[1][2] = "\n"  dataRemoteEvent:FireServer(unpack(args))
+        args[1][2] = "\v"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\t"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\7"  dataRemoteEvent:FireServer(unpack(args)) 
         args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
@@ -923,7 +923,7 @@ local function RunMainScript()
                 [2] = ""
             }
         }
-        args[1][2] = "\n"  dataRemoteEvent:FireServer(unpack(args))
+        args[1][2] = "\v"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\t"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\7"  dataRemoteEvent:FireServer(unpack(args))
         args[1][2] = "\8"  dataRemoteEvent:FireServer(unpack(args))
@@ -2455,7 +2455,7 @@ local function RunMainScript()
                                 ["Event"] = "DungeonAction",
                                 ["Action"] = "Create"
                             },
-                            [2] = "\010"
+                            [2] = "\v"
                         }
                     }
                     if dungeonId then
@@ -2477,7 +2477,7 @@ local function RunMainScript()
                                 ["Action"] = "Start",
                                 ["Dungeon"] = dungeonId
                             },
-                            [2] = "\010"
+                            [2] = "\v"
                         }
                     }
     
@@ -4434,7 +4434,7 @@ local function RunMainScript()
                                                 ["Event"] = "CastleAction",
                                                 ["Action"] = "Join"
                                             },
-                                            [2] = "\010"
+                                            [2] = "\v"
                                             }
                                         }))
                                         task.wait(5)
@@ -4447,7 +4447,7 @@ local function RunMainScript()
                                                     ["Event"] = "CastleAction",
                                                     ["Action"] = "Join"
                                                 },
-                                                [2] = "\010"
+                                                [2] = "\v"
                                             }
                                         }))
                                         task.wait(5)
@@ -5834,7 +5834,7 @@ local function RunMainScript()
                                 ["Event"] = "DungeonAction",
                                 ["Action"] = "Create"
                             },
-                            [2] = "\010"
+                            [2] = "\v"
                         }
                     }
                     if dungeonId then
@@ -5861,7 +5861,7 @@ local function RunMainScript()
                                 ["Action"] = "Start",
                                 ["Dungeon"] = dungeonId
                             },
-                            [2] = "\010"
+                            [2] = "\v"
                         }
                     }
     
@@ -6387,7 +6387,7 @@ local function RunMainScript()
         task.wait()
         Tabs.Infos:AddSection("Support")
         Tabs.Infos:AddParagraph({
-            Title = "Version 2.2.1",
+            Title = "Version 2.2",
             Content = "Buy permanent key on discord!"
         })
         task.wait()
